@@ -12,8 +12,8 @@ import matplotlib.pyplot as plt
 import pprint
 import pandas as pd
 
-# os.chdir("d:/")         # for Windows system at work
-os.chdir("/Users/pzl/Documents")   # for Mac/OSx system
+os.chdir("d:/")         # for Windows system at work
+# os.chdir("/Users/pzl/Documents")   # for Mac/OSx system
 os.chdir("papers/2006OilImportPremium/Analysis/OIPpySecurityPremium")
 os.chdir("OIP_py")
 
@@ -321,10 +321,10 @@ def save_stats_to_CSV(rslts,filename=""):
         writer.writerows(rslts[0][y])
 
 # Execution area
-annual_stats,annual_rslts = run_OIP(num_samples=10000,yearstep=5)
+# annual_stats,annual_rslts = run_OIP(num_samples=10000,yearstep=5)
 
-np.size(annual_rslts)  # annual_rslts is a dictionary, so size gives little info
-annual_rslts.keys()
-np.size(annual_rslts[2020])
+# np.size(annual_rslts)  # annual_rslts is a dictionary, so size gives little info
+# annual_rslts.keys()
+# np.size(annual_rslts[2020])
 
 # save_stats_to_CSV(annual_rslts,"testResults.csv") # does not work b.c. expects an array, not dictionary
