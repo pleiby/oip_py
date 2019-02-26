@@ -12,10 +12,10 @@ import matplotlib.pyplot as plt
 import pprint
 import pandas as pd
 
-os.chdir("d:/")         # for Windows system at work
+#os.chdir("d:/")         # for Windows system at work
 # os.chdir("/Users/pzl/Documents")   # for Mac/OSx system
-os.chdir("papers/2006OilImportPremium/Analysis/OIPpySecurityPremium")
-os.chdir("OIP_py")
+#os.chdir("papers/2006OilImportPremium/Analysis/OIPpySecurityPremium")
+#os.chdir("OIP_py")
 
 import OIP
 import rand_dists_added as rda
