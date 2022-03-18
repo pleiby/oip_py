@@ -82,8 +82,8 @@ def gen_test_means(rvDict, samplesz=10, debug=False):
                     mratio = np.NaN
             else:
                 mratio = samples[k].mean()/expected_mean
-            # print k, "samplesz=", len(samples[k]), "mean:",samples[k].mean(), "ratio:",mratio
-            print "%30s samplesz: %7d mean: %8.5f ratio: %8.5f" % (str(k)[:30], len(samples[k]), samples[k].mean(), mratio)
+            # print(k, "samplesz=", len(samples[k]), "mean:",samples[k].mean(), "ratio:",mratio)
+            print("%30s samplesz: %7d mean: %8.5f ratio: %8.5f" % (str(k)[:30], len(samples[k]), samples[k].mean(), mratio))
     # Special treatment of this one element (ugly)
     samples["Elas:Other NonOPEC Demand"] = - samples["Elas:Other NonOPEC Supply"]
     return(samples)
@@ -142,8 +142,8 @@ def reload_OIPRandomFix():
             mratio = np.NaN
     else:
         mratio = OIP_solution_for_pi[0]/kprf["Total"]
-        # print k, "samplesz=", len(samples[k]), "mean:",samples[k].mean(), "ratio:",mratio
-        print "%30s samplesz: %7d value: %8.5f ratio: %8.5f" % ("Total pi", 1, OIP_solution_for_pi[0], mratio)
+        # print(k, "samplesz=", len(samples[k]), "mean:",samples[k].mean(), "ratio:",mratio)
+        print("%30s samplesz: %7d value: %8.5f ratio: %8.5f" % ("Total pi", 1, OIP_solution_for_pi[0], mratio))
     return(kprf)
 
 def read_OIP_market_data(book):
@@ -162,11 +162,11 @@ def set_market_data_for_year(md,year=2015):
     for n in range(len(md["Year"])):
         if int(round(md["Year"][n])) == year:
             break
-    # print "Year %4d is element %3d in md." % (year,n)
+    # print("Year %4d is element %3d in md." % (year,n))
     curr_mkt_parameter_cases = {}
     for k in OIP.oilmkt_parameter_cases:
         if k not in md:
-            print "Missing market data for: ",k
+            print("Missing market data for: ",k)
         else:
             curr_mkt_parameter_cases[k] = md[k][n]
             OIP.oilmkt_parameter_cases[k][1] = md[k][n]    # WARNING: sets only the Midcase values for AEO
@@ -196,12 +196,12 @@ def simulate_OIP(num_samples = 1):
             # switches[2] = 1.0+np.random.normal(0.0,0.25) # Switch_DomDem_ElasMult
             sample_results[n]= np.array(OIP.eval_one_case(OIP.alt_parameter_cases,OIP.disrSizes,OIP.disrProbs,switches)[:14])    # gather all returned values, truncating if necessary
             if np.isnan(sample_results[n][0]):
-                print OIP.eval_one_case(OIP.alt_parameter_cases,OIP.disrSizes,OIP.disrProbs,switches)
+                print(OIP.eval_one_case(OIP.alt_parameter_cases,OIP.disrSizes,OIP.disrProbs,switches))
                 pprint.pprint(switches)
                 for k in OIP.alt_parameter_cases:
                     if not k== "KEY_PARAMETERS_ASSUMPTIONS":
-                        print "%30s  %8.5f" % (str(k)[:30], OIP.alt_parameter_cases[k][random_fix_index])
-            if n % 1000 == 0: print "  iteration ",n
+                        print("%30s  %8.5f" % (str(k)[:30], OIP.alt_parameter_cases[k][random_fix_index]))
+            if n % 1000 == 0: print("  iteration ",n)
     return sample_results
 
 from scipy import stats
@@ -224,12 +224,12 @@ def result_stats(results, component_names, debug = False):
     ystats[5] = np.max(results,0)     # "Min:             "
 
     if debug:
-        print "Mean:            ", (np.mean(results,0))    # these functions work along specified axis for all variables
-        print "stddev:          ", (np.std(results,0))
-        print "Min:             ", (np.min(results,0))
-        print "5th percentile:  ", (stats.scoreatpercentile(results[:,0],5.0))
-        print "95th percentile: ", (stats.scoreatpercentile(results[:,0],95.0))
-        print "Max:             ", (np.max(results,0))
+        print("Mean:            ", (np.mean(results,0)))    # these functions work along specified axis for all variables
+        print("stddev:          ", (np.std(results,0)))
+        print("Min:             ", (np.min(results,0)))
+        print("5th percentile:  ", (stats.scoreatpercentile(results[:,0],5.0)))
+        print("95th percentile: ", (stats.scoreatpercentile(results[:,0],95.0)))
+        print("Max:             ", (np.max(results,0)))
         plt.plot(ystats.transpose())
     return(ystats)
 
@@ -243,7 +243,7 @@ def sim_OIP_over_years(num_samples=1,yearlist=[]):
     yrly_rslts = {}
     for year in yearlist:
         set_market_data_for_year(md,year)
-        print "Starting year: %5d, base oil price %8.3f" % (year, OIP.oilmkt_parameter_cases["import oil price"][1])
+        print("Starting year: %5d, base oil price %8.3f" % (year, OIP.oilmkt_parameter_cases["import oil price"][1]))
         yrly_rslts[year]= simulate_OIP(num_samples)
     return(yrly_rslts)
 

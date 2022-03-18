@@ -178,7 +178,7 @@ def test_mult_cases(num_samples = 1):
         for n in range(num_samples):
             switches[2] = 1.0+np.random.normal(0.0,0.25) # Switch_DomDem_ElasMult
             sample_results.append(eval_one_case(alt_parameter_cases,disrSizes,disrProbs,switches)[0])    # just gather pi_tot
-            if n % 100 == 0: print n
+            if n % 100 == 0: print(n)
     return sample_results
 
 def eval_one_case(alt_parameter_cases,disrSizes,disrProbs,OIP_switches,itercount=1,debug=False):

@@ -59,8 +59,8 @@ def test_cellname(cellnamestr=''):
 
 def sheet_find_errors(sheet,startrow=0,startcol=0,endrow=-1,endcol=-1,verbose=False):
     if verbose:
-        print 'Sheet name: ',sheet.name
-        print 'with ',sheet.nrows,' rows and ',sheet.ncols,' cols'
+        print('Sheet name: ',sheet.name)
+        print('with ',sheet.nrows,' rows and ',sheet.ncols,' cols')
     # default is to read entire sheet, if endrow, endcol not specified.
     if (endrow==-1): endrow = sheet.nrows    # slight violation of convention that -1 is index of last element
     if (endcol==-1): endcol = sheet.ncols
@@ -84,11 +84,11 @@ def sheet_find_errors(sheet,startrow=0,startcol=0,endrow=-1,endcol=-1,verbose=Fa
     #  0x2A: '#N/A!',   # Argument or function not available
     for row_index in range(startrow,endrow):
         if (row_index) in range(startrow,endrow):
-            if verbose: print "Row ",row_index
+            if verbose: print("Row ",row_index)
             row_cells = sheet.row_slice(row_index,startcol,endcol)
             for cell in row_cells:
                if cell.ctype == xlrd.XL_CELL_ERROR:
-                   print xlrd.error_text_from_code[cell.value],    
+                   print(xlrd.error_text_from_code[cell.value]),
     
 def read_range(sheet,startrow=0,startcol=0,endrow=-1,endcol=-1,verbose=False,substitute_errors=True):
     """Reads the designated range from the specified spreadsheet sheet object.
@@ -96,8 +96,8 @@ def read_range(sheet,startrow=0,startcol=0,endrow=-1,endcol=-1,verbose=False,sub
     Returns a list of sheet rows, each a list of cell values.
     """
     if verbose:
-        print 'Sheet name: ',sheet.name
-        print 'with ',sheet.nrows,' rows and ',sheet.ncols,' cols'
+        print('Sheet name: ',sheet.name)
+        print('with ',sheet.nrows,' rows and ',sheet.ncols,' cols')
     # default is to read entire sheet, if endrow, endcol not specified.
     if (endrow==-1): endrow = sheet.nrows    # slight violation of convention that -1 is index of last element
     if (endcol==-1): endcol = sheet.ncols
@@ -115,29 +115,29 @@ def read_range(sheet,startrow=0,startcol=0,endrow=-1,endcol=-1,verbose=False,sub
                         cell_values_read[-1][n] = numpy.NaN
                     else:
                         cell_values_read[-1][n]= xlrd.error_text_from_code[cell_values_read[-1][n]]
-        # if verbose: print " Row ", row_index, cell_values_read[-1]
+        # if verbose: print(" Row ", row_index, cell_values_read[-1])
         # cell-by-cell approach needed if we are to handle excel error cells
         # (still do no specially process cells of type Text, Date, Boolean, or Empty)
         # if (row_index) in range(startrow,endrow):
         #    row_cells = sheet.row_slice(row_index,startcol,endcol)
         #    cell_values_read.append([])
-        #    if verbose: print "Row ",row_index
+        #    if verbose: print("Row ",row_index)
         #    for col_index in range(sheet.ncols):
         #        if (col_index) in range(startcol,endcol):
         #            values_read[row_index-startrow].append(sheet.cell(row_index,col_index).value)
         #            cell_values_read[-1].append(sheet.cell(row_index,col_index).value)
-        #            if verbose: print " Col ", col_index, " Value: ",sheet.cell(row_index,col_index).value
+        #            if verbose: print(" Col ", col_index, " Value: ",sheet.cell(row_index,col_index).value)
         #    if verbose: print   # follow each row with linefeed
     return(cell_values_read)
 
 def read_sheet_test(sheet):
-    print sheet.row_slice(0,1)
-    print sheet.row_slice(0,1,2)
-    print sheet.row_values(0,1)
-    print sheet.row_values(0,1,2)
-    print sheet.row_values(5,0)             # print row 5, col0 to end
-    print sheet.row_values(5,0,sheet.ncols)    # print row 5, col0 to ncols
-    print sheet.row_values(5,0,-1)            # print row 5, col0 to ncols
+    print(sheet.row_slice(0,1))
+    print(sheet.row_slice(0,1,2))
+    print(sheet.row_values(0,1))
+    print(sheet.row_values(0,1,2))
+    print(sheet.row_values(5,0))             # print row 5, col0 to end
+    print(sheet.row_values(5,0,sheet.ncols))   # print row 5, col0 to ncols
+    print(sheet.row_values(5,0,-1))            # print row 5, col0 to ncols
     
 
 
@@ -185,9 +185,9 @@ def read_book_namedsheet_range(filename='',sheetname='',startrow=0,startcol=0,en
 #     return(read_sheetcontent_range(book, sheetname, startrow, startcol, endrow, endcol, verbose))
 
 # Examplse usage of cellname, cellnameabs,colname
-# print cellname(0,0),cellname(10,10),cellname(100,100)
-# print cellnameabs(3,1),cellnameabs(41,59),cellnameabs(265,358)
-# print colname(0),colname(10),colname(100)
+# print(cellname(0,0),cellname(10,10),cellname(100,100))
+# print(cellnameabs(3,1),cellnameabs(41,59),cellnameabs(265,358))
+# print(colname(0),colname(10),colname(100))
 
 def read_book_rangenames(filename,sheetnum=0):
     """open an excel workbook and return the dictionary of named ranges

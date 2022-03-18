@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 """
 rand_dists_added.py
-Additional random functions needed to replicate some @risk functionality
+Additional random functions needed to replicate some distributions previously used
 """
 import numpy
 
+# Note: there are likely to be faster library functions for discrete random samples
 def risk_discrete(xvals=[],probs=[],count=1):
     """generate values from the enumerated elements of a discrete distribution.\n
        probs and xvals are lists of discrete probabilities and values.\n
@@ -12,7 +13,7 @@ def risk_discrete(xvals=[],probs=[],count=1):
        Return a randomly sampled value from xvals
     """
     urv = numpy.random.random(count)    # a numpy array of uniform rvs over 0 to 1.0
-    rv = numpy.ones(count)*numpy.NaN
+    rv = numpy.ones(count)*numpy.NaN    # random values to be returned, init to NaN
     if count<len(xvals):    # sample small
         for m in range(count):    # loop over possible xvals
             cprob = 0.0
@@ -69,9 +70,9 @@ def risk_cumul(XLowBnd,XUpBnd,CumProbList=[],XList=[],count=1,debug=False):
     cprobs = numpy.array([0.0]+CumProbList+[1.0])
     urv = numpy.random.random(count)    # a numpy array of uniform rvs over 0 to 1.0
     if debug:
-        print "xvals ",xvals
-        print "cprobs ", cprobs
-        print "urv: ",urv
+        print("xvals: ",xvals)
+        print("cprobs: ", cprobs)
+        print("urv: ",urv)
     rv = numpy.ones(count)*numpy.NaN
     if count< 2: #len(xvals):
         for m in range(count):    # loop over each sample
@@ -80,10 +81,10 @@ def risk_cumul(XLowBnd,XUpBnd,CumProbList=[],XList=[],count=1,debug=False):
             for n in range(len(xvals))[1:]:
                 if urv[m] <= cprobs[n]:
                     if debug:
-                        print "urv[m]", urv[m], "n", n, "cprobs[n]", cprobs[n]
-                        print "x_previous", x_previous, "cp_previous", cp_previous
+                        print("urv[m]", urv[m], "n", n, "cprobs[n]", cprobs[n])
+                        print("x_previous", x_previous, "cp_previous", cp_previous)
                         if urv[m] <= cprobs[1]:
-                            print m,urv[m]
+                            print(m,urv[m])
                     rv[m] = x_previous + (xvals[n]-x_previous)*(urv[m]-cp_previous)/(cprobs[n]-cp_previous)
                     break
                 else:
@@ -107,7 +108,7 @@ def risk_cumul(XLowBnd,XUpBnd,CumProbList=[],XList=[],count=1,debug=False):
             # WARNING: possibility of zero-probability-width bin leading to divide by zero?  but should have no observations
             # rv[test1] = xvals[n-1] + (xvals[n]-xvals[n-1])*(urv-cprobs[n-1])/(cprobs[n]-cprobs[n-1])
             test1 = ~test2        # this is array negation, unlike "not"
-        if debug: print "rvbins",rvbins
+        if debug: print("rvbins",rvbins)
         rv = bbase[rvbins] + urv*bslope[rvbins]    # use trick indexing by integers arrays
     return(rv)
 
