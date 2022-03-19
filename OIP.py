@@ -1,29 +1,47 @@
+# %% [markdown]
+# # OIP.py Oil Import Premium, Python Implementation
+
+# %% [markdown]
+#   Revision Documentation
+#   --------------------------
+#   
 # -*- coding: utf-8 -*-
-"""
-Revised 2013_10_10
+#   """
+#   Revised 2021_09_14
+#   
+#   @author: Paul N. Leiby
+#   
+#   OIP.py 09/14/2021
+#       Reviewed and updated rand_dists_added.py
+#   
+#   OIP_DEV_V16temp 11/8/2013
+#       Corrected sign of mean for "Elas:Other NonOPEC Demand"
+#   OIP_Dev_V15 10/10/2013
+#   OIP_Dev_V14 05/23/2011
+#       Updated SPR size in oilmkt_parameter_cases
+#       Made share of US GDP spent on oil (sigma_oUS) potenially vary across cases
+#           (Base vs. Opt are sigma_oUS_0 vs. sigma_oUS_k). But currently set sigma_oUS_0 = sigma_oUS_k
+#       Note: model not fully tested for Opt case, or dual cases.
+#       Elaborate premium component breakdown:
+#           - adding E_MCdis_vul_deGDP_k, SR Disr marginal effect: demand on GDP sensitivity [times RhoD]
+#           - return all in list pi_components
+#   OIP_Dev_V13 05/22/2011
+#       Tested version that replicates spreadsheet version (Oil_Import_Premium_2005_risk_v21main_2011Dev_v13.xls)
+#       for individual randomly generated cases to within 5 decimal places,
+#       as well and mean total premium after full simulation of 10000 iterations.
+#   """
+#   
+#   
 
-@author: Paul N. Leiby
-
-OIP_DEV_V16temp 11/8/2013
-    Corrected sign of mean for "Elas:Other NonOPEC Demand"
-OIP_Dev_V15 10/10/2013
-OIP_Dev_V14 05/23/2011
-    Updated SPR size in oilmkt_parameter_cases
-    Made share of US GDP spent on oil (sigma_oUS) potenially vary across cases
-        (Base vs. Opt are sigma_oUS_0 vs. sigma_oUS_k). But currently set sigma_oUS_0 = sigma_oUS_k
-    Note: model not fully tested for Opt case, or dual cases.
-    Elaborate premium component breakdown:
-        - adding E_MCdis_vul_deGDP_k, SR Disr marginal effect: demand on GDP sensitivity [times RhoD]
-        - return all in list pi_components
-OIP_Dev_V13 05/22/2011
-    Tested version that replicates spreadsheet version (Oil_Import_Premium_2005_risk_v21main_2011Dev_v13.xls)
-    for individual randomly generated cases to within 5 decimal places,
-    as well and mean total premium after full simulation of 10000 iterations.
-"""
-
+# %%
 import numpy as np
 import rand_dists_added as rda
 
+
+# %% [markdown]
+# ## Data Section
+
+# %%
 # ======================================================================
 alt_parameter_cases = {  # parameter cases are organized in a dictionary of lists
 "KEY_PARAMETERS_ASSUMPTIONS":                       ["Low", "Mid",  "High", "Mean",  "RandomFix"],
@@ -53,6 +71,9 @@ alt_parameter_cases = {  # parameter cases are organized in a dictionary of list
 "Oil Market (AEO) Case":                            [1,     2,      3,      2,       2]
 }
 
+
+
+# %%
 oilmkt_parameter_cases = {
 # "Base_Mkt_Alts":                                    ["AEO2010 LWOP Price Path", "AEO2010 Base Price Path", "AEO2010 HWOP Price Path", "AEO2010 Base Price Path",  "AEO2010 Base Price Path"],
 "import oil price":                                 [39.97700 ,   79.16172,    124.83358,   79.16172,    79.16172 ],
@@ -67,6 +88,8 @@ oilmkt_parameter_cases = {
 "OECD_Europe as Fraction of NonUS Consumption":     [0.204719 ,   0.204447,    0.203969 ,   0.204447,    0.204447 ]
 }
 
+
+# %%
 parameter_probabilities = {
 #Probability Cases":                                                     ["Low",  "Mid",  "High"]
 "Inflation Unaccomodated":                          ["risk_discrete"    , [0.25,   0.5,    0.25]],        # =RiskDiscrete(O6:Q6,U6:W6)
@@ -95,6 +118,8 @@ parameter_probabilities = {
 "Oil Market (AEO) Case":                            ["risk_discrete"    , [0.00,   1.0,    0.00]]        # =RiskDiscrete(O19:Q19,U19:W19)
 }
 
+
+# %%
 # Decadal Disruption Probabilities and sizes
 disr_size_prob_cases = {
 "DisrSize":     [1.0, 3.0,  6.0 ],  # MMBD  - exog - Disr Size
@@ -109,50 +134,54 @@ disr_size_prob_cases = {
 disrSizes = np.array(disr_size_prob_cases["DisrSize"])
 disrProbs = np.array(disr_size_prob_cases["Case5EMF2005"])
 
-""" Random distributions needed:
-    RiskDiscrete(XList,DiscProbList)
-    RiskTriang(XLowBnd,XMode,XUpBnd)
-    =RiskCumul(XlowBnd,XUpBnd,{XList0.25,1,4},{CumProbList 0.1,0.5,0.9})
 
-=RiskDiscrete(O6:Q6,U6:W6)
-Inflation Unaccomodated
-Recycle rate
-GDP disr loss elasticity
-GDP-oil Price elast, Long-run/Short-run
-Disruption Length (yrs)
-SPR Policy (Disr fract offset)
-LR elas of US oil demand
-LR elas of US oil supply
-adj rate domestic oil demand
+# %% [markdown]
+#   """ Random distributions needed:
+#       RiskDiscrete(XList,DiscProbList)
+#       RiskTriang(XLowBnd,XMode,XUpBnd)
+#       =RiskCumul(XlowBnd,XUpBnd,{XList0.25,1,4},{CumProbList 0.1,0.5,0.9})
+#   
+#   =RiskDiscrete(O6:Q6,U6:W6)
+#   Inflation Unaccomodated
+#   Recycle rate
+#   GDP disr loss elasticity
+#   GDP-oil Price elast, Long-run/Short-run
+#   Disruption Length (yrs)
+#   SPR Policy (Disr fract offset)
+#   LR elas of US oil demand
+#   LR elas of US oil supply
+#   adj rate domestic oil demand
+#   
+#   adj rate domestic oil supply
+#   =RiskTriang(Q26,P26,O26) (but one value)
+#   
+#   =RiskTriang(O10,P10,Q10)
+#   Disruption reduction w/ imports
+#   Shr Disr price incr anticipated
+#   Marg var tot (oil&nonoil) demand w/ imports0
+#   Marg var tot (oil&nonoil) demand w/ imports1
+#   Marg var of demand with imports
+#   SPR Policy (SPR fraction used)
+#   Effective Fraction of SPR Draw
+#   Elas:Other NonOPEC Supply
+#   Elas:Other NonOPEC Demand
+#   = Elas:Other NonOPEC Supply (before any adjustment due to constrained demand)
+#   Disruption Prob Case Selector
+#   =RiskTriang(Q18,P18,O18), but only one value
+#   
+#   =RiskCumul(0,6,{0.25,1,4},{0.1,0.5,0.9})
+#   OPEC LR Supply elasticity
+#   
+#   = deterministic (no distribution, not varying in risk analysis)
+#   Disruption Probabilities
+#   Disruption Offsets
+#   
+#   = exog
+#   Oil Market (AEO) Case
+#   """
+#
 
-adj rate domestic oil supply
-=RiskTriang(Q26,P26,O26) (but one value)
-
-=RiskTriang(O10,P10,Q10)
-Disruption reduction w/ imports
-Shr Disr price incr anticipated
-Marg var tot (oil&nonoil) demand w/ imports0
-Marg var tot (oil&nonoil) demand w/ imports1
-Marg var of demand with imports
-SPR Policy (SPR fraction used)
-Effective Fraction of SPR Draw
-Elas:Other NonOPEC Supply
-Elas:Other NonOPEC Demand
-= Elas:Other NonOPEC Supply (before any adjustment due to constrained demand)
-Disruption Prob Case Selector
-=RiskTriang(Q18,P18,O18), but only one value
-
-=RiskCumul(0,6,{0.25,1,4},{0.1,0.5,0.9})
-OPEC LR Supply elasticity
-
-= deterministic (no distribution, not varying in risk analysis)
-Disruption Probabilities
-Disruption Offsets
-
-= exog
-Oil Market (AEO) Case
-"""
-
+# %%
 def init_OIP(replicable= False):
     """Initialize variables, parameters, and random functions for OIP.
     Parameter replicable=False if random seed is to be "randomized" based on system clock.
@@ -162,14 +191,19 @@ def init_OIP(replicable= False):
     else:
         np.random.seed()    # initialize seed based on system clock
 
+
+
+# %%
 OIP_default_switches = [
                 2010,    # Switch_AEOVersion
                 2015,    # Switch_Year
                 1.0,     # Switch_DomDem_ElasMult
                 0.0]     # Switch_ConstrOECDEurDemand
 
+
+# %%
 def test_mult_cases(num_samples = 1):
-    global alt_parameter_cases,disrSizes,dirsProbs, OIP_default_switches
+    global alt_parameter_cases, disrSizes, dirsProbs, OIP_default_switches
     sample_results = []
     switches = OIP_default_switches
     if num_samples == -1:
@@ -181,6 +215,11 @@ def test_mult_cases(num_samples = 1):
             if n % 100 == 0: print(n)
     return sample_results
 
+
+# %% [markdown]
+# ### `eval_one_case()`: Evaluation of a single case (Monte Carlo iteration, year, input set)
+
+# %%
 def eval_one_case(alt_parameter_cases,disrSizes,disrProbs,OIP_switches,itercount=1,debug=False):
     Switch_AEOVersion = OIP_switches[0]
     Switch_Year       = OIP_switches[1]
@@ -760,6 +799,9 @@ def eval_one_case(alt_parameter_cases,disrSizes,disrProbs,OIP_switches,itercount
     return(pi_components)
 
 # ======================================================================
+
+
+# %%
 """
 #                                                                   (            )
                                    #                                                                   (            )
@@ -814,6 +856,8 @@ CaseEMF2005                     - exog - Decade Probs   # EMF2005 Midcase (test)
                                    #                                                                   (            )
 """
 
+
+# %%
 # Following UNUSED (parameters set near beginning of eval_one_case)
 # Variables - Reference (non-Opt import level) values
 def calcBaseVars():
