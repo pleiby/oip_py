@@ -1,54 +1,73 @@
+# %% [markdown]
+# testOIP.py
+# ============
+
+# %% [markdown]
 # -*- coding: utf-8 -*-
-"""
-testOIP.py
+#   """
+#   testOIP.py
+#   
+#   Revised 2018_07_03
+#   
+#   @author: P.N. Leiby
+#   """
+#
 
-Revised 2018_07_03
-
-@author: P.N. Leiby
-"""
+# %%
 import os
+
+# Following is not needed if launching program from model project folder,
+# os.chdir(\"d:/\")         # for Windows system at work,
+# os.chdir("/Users/pzl/Documents")   # for Mac/OSx system
+# os.chdir("papers/2006OilImportPremium/Analysis/OIPpySecurityPremium")
+# os.chdir("oip_py")
+
+
+# %%
+# general libraries
 import numpy as np
-import matplotlib.pyplot as plt
 import pprint
-import pandas as pd
+# import pandas
+import matplotlib.pyplot as plt
 
-# os.chdir("d:/")         # for Windows system at work
-os.chdir("/Users/pzl/Documents")   # for Mac/OSx system
-os.chdir("papers/2006OilImportPremium/Analysis/OIPpySecurityPremium")
-os.chdir("oip_py")
-
+# %%
+# import problem-specific utility files
 import OIP
 import rand_dists_added as rda
 import sheet_utils as su
 import utilities
 
+# %%
+model_workbook_filename = "Oil_Import_Premium_2005_risk_v21main_2011Dev_v14.xls"
+model_sheet_name = 'OilImportPremium2005'
 
-"""
-vals = [1, 2, 3]
-probs = [0.2,0.7,0.1]
-
-rv = rda.risk_discrete(vals,probs,100000)
-currplot = plt.hist(rv,3)
-plt.hist(rv,7,label="discrete dist")
-plt.title("Experimenting with Distributions")
-plt.ylabel("Count")
-
-# testing cumulative dist
-rv = rda.risk_cumul(0,6,[0.1,0.5,0.9],[0.25,1,4],10)
-
-kl = OIP.alt_parameter_casesparameter_probabilities.keys()
-for k in kl:
-    OIP.parameter_probabilities[k].append(OIP.alt_parameter_cases[k][:-1])
-"""
+# %%
+## # Test functions for generation of discrete random distribution
+## vals = [1, 2, 3]
+## probs = [0.2,0.7,0.1]
+## 
+## rv = rda.risk_discrete(vals,probs,100000)
+## currplot = plt.hist(rv,3)
+## plt.hist(rv,7,label="discrete dist")
+## plt.title("Experimenting with Distributions")
+## plt.ylabel("Count")
+## 
+## # testing cumulative dist
+## rv = rda.risk_cumul(0,6,[0.1,0.5,0.9],[0.25,1,4],10)
+## 
+## kl = OIP.alt_parameter_casesparameter_probabilities.keys()
+## for k in kl:
+##     OIP.parameter_probabilities[k].append(OIP.alt_parameter_cases[k][:-1])
 
 # Objective: Use dataframe object from pandas
 # Update: the pandas dataframe is far more established at this point, and is preferred
 
 # For each random variable $X$ in the dictionary *rvDict*, generate *samplesz* samples $X_i$ according to the specified distribution type and parameters.
 
+# %%
 def gen_test_means(rvDict, samplesz=10, debug=False):
     """generate random sample for random variables in dictionary 'OIP.parameter_probabilities'
-
+    
     rvDict -- dictionary of random variables, each entry giving name and list
     samplesz -- number of samples for each r.v. (default = 10)
     debug -- boolean if debug printouts wanted (default = False)
@@ -56,7 +75,7 @@ def gen_test_means(rvDict, samplesz=10, debug=False):
     """
     # get keys to random parameters
     kl = rvDict.keys()
-
+    
     # for k in kl:    # pick up probabilities and append alternative values (dropping right columns with mean and a given sample)
     #     OIP.parameter_probabilities[k].append(OIP.alt_parameter_cases[k][:-2])
     samples = {}
@@ -89,16 +108,19 @@ def gen_test_means(rvDict, samplesz=10, debug=False):
     return(samples)
 
 
+# %%
 def linkto_workbook():
     # os.chdir(r"\Papers\2009LCFSTradableCredits\Analysis\EnergySecurity\OIP_py")
-    wb_name ="Oil_Import_Premium_2005_risk_v21main_2011Dev_v14.xls"
+    wb_name = model_workbook_filename
     book = su.xlrd.open_workbook(wb_name)
     return(book)
 
 
+
+# %%
 def read_OIPRandomFix(book):
     # Warning: no error checking on read
-    wbdata = su.read_openbook_namedsheet_range(book, sheetname='OilImportPremium2005',startrow=0,startcol=su.colname_to_num(cn='A'),endrow=72,endcol=su.colname_to_num(cn='T'))
+    wbdata = su.read_openbook_namedsheet_range(book, sheetname=model_sheet_name, startrow=0,startcol=su.colname_to_num(cn='A'),endrow=72,endcol=su.colname_to_num(cn='T'))
     #wbdata = sheet_utils.read_sheet_range(filename=wb_name,sheetnum=2)
     KeyParameterDescriptors = utilities.column_from2DList(wbdata,0)[4:29]
     # print(KeyParameterDescriptors)
@@ -112,15 +134,20 @@ def read_OIPRandomFix(book):
         kp_rfix[kp] = kf
     return(kp_rfix)
 
+
+# %%
 def read_OIPswitches(book):
     # Warning: no error checking on read
-    wbdata = su.read_openbook_namedsheet_range(book, sheetname='OilImportPremium2005',startrow=0,startcol=su.colname_to_num(cn='A'),endrow=10,endcol=su.colname_to_num(cn='H'))
+    wbdata = su.read_openbook_namedsheet_range(book, sheetname=model_sheet_name, startrow=0,startcol=su.colname_to_num(cn='A'),endrow=10,endcol=su.colname_to_num(cn='H'))
     switches = [int(round(wbdata[0][su.colname_to_num(cn='G')])),    # 2010 Switch_AEOVersion
                 int(round(wbdata[2][su.colname_to_num(cn='G')])),    # 2015,    # Switch_Year
                 wbdata[3][su.colname_to_num(cn='G')],    # 1.0,     # Switch_DomDem_ElasMult
                 wbdata[4][su.colname_to_num(cn='G')]]    # 1.0     # Switch_ConstrOECDEurDemand      return(kp_rfix)
     return(switches)
+    
 
+
+# %%
 def reload_OIPRandomFix():
     random_fix_index=4
     bk = linkto_workbook()
@@ -145,7 +172,10 @@ def reload_OIPRandomFix():
         # print(k, "samplesz=", len(samples[k]), "mean:",samples[k].mean(), "ratio:",mratio)
         print("%30s samplesz: %7d value: %8.5f ratio: %8.5f" % ("Total pi", 1, OIP_solution_for_pi[0], mratio))
     return(kprf)
+    
 
+
+# %%
 def read_OIP_market_data(book):
     """ Read oil market data (corresponding to some AEO version) from OIP worksheet.
 
@@ -158,6 +188,8 @@ def read_OIP_market_data(book):
         market_data[r[0]] = np.array(r[2:])    # drop blank col and 2005 col w/ incomplete data
     return(market_data)
 
+
+# %%
 def set_market_data_for_year(md,year=2015):
     for n in range(len(md["Year"])):
         if int(round(md["Year"][n])) == year:
@@ -172,10 +204,15 @@ def set_market_data_for_year(md,year=2015):
             OIP.oilmkt_parameter_cases[k][1] = md[k][n]    # WARNING: sets only the Midcase values for AEO
     return(curr_mkt_parameter_cases)
 
+
+
+# %%
 pi_component_names = ["pi_tot",               "pi_m",               "pi_di",                    "pi_dm",              "pi_d",
                      "E_MCdis_vul_monops_k",  "E_MCdis_vul_dGDP_k", "E_MCdis_vul_dDWL_k",       "E_MCdis_vul_dFC_k",  "E_MCdis_vul_deGDP_k",
                      "E_MCdis_size_dSSdDWL_k","E_MCdis_size_dFC_k", "E_MCdis_size_dGNPdDelP_k", "MCmonopsony_k"]
 
+
+# %%
 def simulate_OIP(num_samples = 1):
     global alt_parameter_cases,disrSizes,dirsProbs, OIP_default_switches
     global pi_component_names
@@ -204,7 +241,9 @@ def simulate_OIP(num_samples = 1):
             if n % 1000 == 0: print("  iteration ",n)
     return sample_results
 
-from scipy import stats
+
+# %%
+from scipy import stats   
 def result_stats(results, component_names, debug = False):
     """return a numpy array of statistics for each variable in component names
 
@@ -233,6 +272,8 @@ def result_stats(results, component_names, debug = False):
         plt.plot(ystats.transpose())
     return(ystats)
 
+
+# %%
 def sim_OIP_over_years(num_samples=1,yearlist=[]):
     """Execute OIP model for samplesize "num_samples", across years specied in "yearlist"
        Returns
@@ -247,6 +288,8 @@ def sim_OIP_over_years(num_samples=1,yearlist=[]):
         yrly_rslts[year]= simulate_OIP(num_samples)
     return(yrly_rslts)
 
+
+# %%
 def gen_yearly_result_stats(yrly_rslts, component_names):
     """Generate statistics by year from a "yrly_rslts", a dictionary of simulation results by year
        Returns
@@ -256,7 +299,10 @@ def gen_yearly_result_stats(yrly_rslts, component_names):
     for year in yrly_rslts:
         yrly_stats[year]= result_stats(yrly_rslts[year],component_names)
     return(yrly_stats)
+        
 
+
+# %%
 def run_OIP(num_samples=1,yearstep=5):
     """Execute OIP model for samplesize "num_samples", across full time horizon with time step "yearstep"
 
@@ -272,6 +318,8 @@ def run_OIP(num_samples=1,yearstep=5):
     yearly_stats = gen_yearly_result_stats(yearly_rslts,pi_component_names)
     return(yearly_stats,yearly_rslts)
 
+
+# %%
 import pickle
 def save_results(full_results):
     outfileptr = open("results1.pkl","wb")
@@ -282,9 +330,10 @@ def read_results(filename = ""):
     pkl_file_ptr = open(filename,"rb")
     return(pickle.load(pkl_file_ptr))
 
+# %%
 def dict_to_array(d):
     # assumes that each element of dictionary is of same shape
-    ar = np.zeros([len(d.keys()),np.shape(d[d.keys()[0]])])
+    ar = np.zeros([len(d.keys()),np.shape(d.keys()[0])])
     print("Key  "+d.keys())
     print("Key length "+str(len(d.keys())))
     for i in range(len(d.keys())):
@@ -305,6 +354,7 @@ def dict_to_array(d):
 #    writer = None
 #"""
 
+# %%
 import csv
 
 def save_stats_to_CSV(rslts,filename=""):
@@ -319,11 +369,15 @@ def save_stats_to_CSV(rslts,filename=""):
     for y in rslts[0]: # loop over years
         writer.writerow(y)
         writer.writerows(rslts[0][y])
+        
 
+# %%
 # Execution area
-# annual_stats,annual_rslts = run_OIP(num_samples=10000,yearstep=5)
+annual_stats,annual_rslts = run_OIP(num_samples=10000,yearstep=5)
 
-# np.size(annual_rslts)  # annual_rslts is a dictionary, so size gives little info
+
+# %%
+np.size(annual_rslts)  # annual_rslts is a dictionary, so size gives little info
 # annual_rslts.keys()
 # np.size(annual_rslts[2020])
 
