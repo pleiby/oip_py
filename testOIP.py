@@ -28,7 +28,7 @@ import os
 import numpy as np
 import pprint
 
-# import pandas
+import pandas as pd
 import matplotlib.pyplot as plt
 
 # %%
@@ -241,6 +241,7 @@ def set_market_data_for_year(md, year=2015):
 
 
 # %%
+# names of premium components to be calculated over sample
 pi_component_names = [
     "pi_tot",
     "pi_m",
@@ -258,6 +259,16 @@ pi_component_names = [
     "MCmonopsony_k",
 ]
 
+# %%
+# stats to be measured for each component
+pi_stat_names = [
+    "Mean",
+    "Stddev",
+    "Min",
+    "5th percentile",
+    "95th percentile",
+    "Max",
+]
 
 # %%
 def simulate_OIP(num_samples=1):
@@ -467,8 +478,28 @@ annual_stats, annual_rslts = run_OIP(num_samples=10000, yearstep=5)
 
 
 # %%
-np.size(annual_rslts)  # annual_rslts is a dictionary, so size gives little info
-# annual_rslts.keys()
-# np.size(annual_rslts[2020])
+# `annual_rslts` and `annual_stats` are dictionaries indexed by year, each element of which is array
+# np.size(annual_rslts)  # annual_rslts is a dictionary, so size gives little info
+annual_rslts.keys()
+np.size(annual_rslts[2020])
+np.shape(annual_rslts[2020])
 
 # save_stats_to_CSV(annual_rslts,"testResults.csv") # does not work b.c. expects an array, not dictionary
+
+# %%
+# convert sample results to dataframe
+# annual_rslts_df = pd.DataFrame.from_dict(annual_rslts[2020]) # only works if each element of dict is an (equal length) column
+annual_rslts_df = pd.DataFrame(
+    annual_rslts[2020], columns=pi_component_names
+)  # index is sample num
+
+# %%
+# convert sample stats to dataframe
+annual_stats_df = pd.DataFrame(
+    annual_stats[2020], columns=pi_component_names
+)  # index could be pi_stat_names
+
+
+# %%
+annual_stats_df
+# %%
