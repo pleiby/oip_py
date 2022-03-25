@@ -7,7 +7,7 @@
 #   """
 #   testOIP.py
 #
-#   Revised 2018_07_03
+#   Revised 2022_03_23
 #
 #   @author: P.N. Leiby
 #   """
@@ -33,10 +33,10 @@ import matplotlib.pyplot as plt
 
 # %%
 # import problem-specific utility files
-import OIP
+import OIP  # for test_mult_cases
 import rand_dists_added as rda
 import sheet_utils as su
-import utilities
+import utilities  # for column_from2DList
 
 # %%
 model_workbook_filename = "Oil_Import_Premium_2005_risk_v21main_2011Dev_v14.xls"
