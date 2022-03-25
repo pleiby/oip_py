@@ -72,7 +72,10 @@ def gen_test_means(rvDict, samplesz=10, debug=False):
     rvDict -- dictionary of random variables, each entry giving name and list
     samplesz -- number of samples for each r.v. (default = 10)
     debug -- boolean if debug printouts wanted (default = False)
-    return dictionary with samples for each random variable
+    return dictionary with samples for each random variable.
+
+    Relies on dist parameters in global `OIP.alt_parameter_cases`
+    Relies on dict of distrib functions in `rda.risk_function_dict`
     """
     # get keys to random parameters
     kl = rvDict.keys()
@@ -82,20 +85,20 @@ def gen_test_means(rvDict, samplesz=10, debug=False):
     samples = {}
     for k in kl:
         # pick up probabilities and append alternative values (dropping right columns with mean and a given sample)
-        pp = rvDict[k]
-        xv = OIP.alt_parameter_cases[k][:-2]
+        pp = rvDict[k]  # param prob info list
+        xv = OIP.alt_parameter_cases[k][:-2]  # low, mid, high values
+        dist_fn = rda.risk_function_dict[pp[0]]  # prob dist fn to call
+
         if pp[0] == "risk_discrete":
-            samples[k] = rda.risk_function_dict[pp[0]](xv, pp[1], count=samplesz)
+            samples[k] = dist_fn(xv, pp[1], count=samplesz)
         elif pp[0] == "risk_triangular" or pp[0] == "risk_rtriangular":
-            samples[k] = rda.risk_function_dict[pp[0]](*xv, count=samplesz)
+            samples[k] = dist_fn(*xv, count=samplesz)  # ??? *xv?
         elif pp[0] == "risk_cumul":
             xv.sort()
-            samples[k] = rda.risk_function_dict[pp[0]](
-                pp[1][0], pp[1][1], pp[1][2], xv, count=samplesz
-            )
+            samples[k] = dist_fn(pp[1][0], pp[1][1], pp[1][2], xv, count=samplesz)
         else:
             samples[k] = np.zeros(samplesz) * np.NaN
-        if debug:
+        if debug:  # compare sample mean to recorded mean
             expected_mean = OIP.alt_parameter_cases[k][3]
             if expected_mean == 0.0:
                 if samples[k].mean() == 0.0:
@@ -109,7 +112,7 @@ def gen_test_means(rvDict, samplesz=10, debug=False):
                 "%30s samplesz: %7d mean: %8.5f ratio: %8.5f"
                 % (str(k)[:30], len(samples[k]), samples[k].mean(), mratio)
             )
-    # Special treatment of this one element (ugly)
+    # Special treatment of this one non-independent element (ugly)
     samples["Elas:Other NonOPEC Demand"] = -samples["Elas:Other NonOPEC Supply"]
     return samples
 
@@ -163,8 +166,8 @@ def read_OIPswitches(book):
         int(round(wbdata[0][su.colname_to_num(cn="G")])),  # 2010 Switch_AEOVersion
         int(round(wbdata[2][su.colname_to_num(cn="G")])),  # 2015,    # Switch_Year
         wbdata[3][su.colname_to_num(cn="G")],  # 1.0,     # Switch_DomDem_ElasMult
-        wbdata[4][su.colname_to_num(cn="G")],
-    ]  # 1.0     # Switch_ConstrOECDEurDemand      return(kp_rfix)
+        wbdata[4][su.colname_to_num(cn="G")],  # 1.0     # Switch_ConstrOECDEurDemand
+    ]
     return switches
 
 

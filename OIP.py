@@ -101,6 +101,9 @@ oilmkt_parameter_cases = {
 
 
 # %%
+# dictionary of parameter name string (key),
+#   param prob distribution-type string,
+#   and vector of distribution parameters.
 parameter_probabilities = {
     # Probability Cases":                                                     ["Low",  "Mid",  "High"]
     "Inflation Unaccomodated": [
