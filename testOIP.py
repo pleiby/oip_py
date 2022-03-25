@@ -115,9 +115,8 @@ def gen_test_means(rvDict, samplesz=10, debug=False):
 
 
 # %%
-def linkto_workbook():
+def linkto_workbook(wb_name):
     # os.chdir(r"\Papers\2009LCFSTradableCredits\Analysis\EnergySecurity\OIP_py")
-    wb_name = model_workbook_filename
     book = su.xlrd.open_workbook(wb_name)
     return book
 
@@ -172,7 +171,7 @@ def read_OIPswitches(book):
 # %%
 def reload_OIPRandomFix():
     random_fix_index = 4
-    bk = linkto_workbook()
+    bk = linkto_workbook(model_workbook_filename)
     kprf = read_OIPRandomFix(bk)
     for k in kprf:
         if k in OIP.alt_parameter_cases:
@@ -372,7 +371,7 @@ def sim_OIP_over_years(num_samples=1, yearlist=[]):
     Returns
       "yrly_rslts", a dictionary of simulation results for each year.
     """
-    bk = linkto_workbook()
+    bk = linkto_workbook(model_workbook_filename)
     md = read_OIP_market_data(bk)
     yrly_rslts = {}
     for year in yearlist:
