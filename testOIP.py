@@ -30,6 +30,7 @@ import pprint
 
 import pandas as pd
 import matplotlib.pyplot as plt
+from scipy import stats  # for scoreatpercentile
 
 # %%
 # import problem-specific utility files
@@ -297,7 +298,10 @@ def simulate_OIP(num_samples=1):
     """simulate OIP calculation num_samples times for one year and param distributions
 
     num_samples -- rand sample size for params. =1 for solution with default param values\n
-    return `sample_results` a numpy array of dim num_samples x num_tracked_vars
+    return `sample_results` a numpy array of dim num_samples x num_tracked_vars\n
+
+    requires and alters globals `OIP.alt_parameter_cases`, `OIP.disrSizes`,
+                `OIP.disrProbs`, `OIP_default_switches`, `pi_component_names`
     """
     global alt_parameter_cases, disrSizes, dirsProbs, OIP_default_switches
     global pi_component_names
@@ -326,12 +330,14 @@ def simulate_OIP(num_samples=1):
                 else:
                     print("Skipping: ", k)
             # switches[2] = 1.0+np.random.normal(0.0,0.25) # Switch_DomDem_ElasMult
+            # Note: disrSizes, disrProbs and switches are fixed for each MC simulation
             sample_results[n] = np.array(
                 OIP.eval_one_case(
                     OIP.alt_parameter_cases, OIP.disrSizes, OIP.disrProbs, switches
-                )[:14]
+                )[:num_tracked_vars]
             )  # gather all returned values, truncating if necessary
             if np.isnan(sample_results[n][0]):
+                print("Invalid result 0 (pi_tot) for sample ", n)
                 print(
                     OIP.eval_one_case(
                         OIP.alt_parameter_cases, OIP.disrSizes, OIP.disrProbs, switches
@@ -353,9 +359,6 @@ def simulate_OIP(num_samples=1):
 
 
 # %%
-from scipy import stats
-
-
 def result_stats(results, component_names, debug=False):
     """return a numpy array of statistics for each variable in component names
 
