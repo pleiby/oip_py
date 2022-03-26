@@ -69,9 +69,9 @@ model_sheet_name = "OilImportPremium2005"
 def gen_test_means(rvDict, samplesz=10, debug=False):
     """generate random sample for random variables in dictionary 'OIP.parameter_probabilities'
 
-    rvDict -- dictionary of random variables, each entry giving name and list
-    samplesz -- number of samples for each r.v. (default = 10)
-    debug -- boolean if debug printouts wanted (default = False)
+    rvDict -- dictionary of random variables, each entry giving name and list\n
+    samplesz -- number of samples for each r.v. (default = 10)\n
+    debug -- boolean if debug printouts wanted (default = False)\n
     return dictionary with samples for each random variable.
 
     Relies on dist parameters in global `OIP.alt_parameter_cases`
@@ -126,6 +126,11 @@ def linkto_workbook(wb_name):
 
 # %%
 def read_OIPRandomFix(book):
+    """read model excel sheet for some key params and switches
+
+    book -- open excel workbook\n
+    returns dict of key param descriptors and fixed values
+    """
     # Warning: no error checking on read
     wbdata = su.read_openbook_namedsheet_range(
         book,
@@ -146,13 +151,18 @@ def read_OIPRandomFix(book):
     KeyParameterRandomFix.append(wbdata[65][4])
     kp_rfix = {}
     kp_pairs = zip(KeyParameterDescriptors, KeyParameterRandomFix)
-    for kp, kf in kp_pairs:
+    for kp, kf in kp_pairs:  # convert kp_pairs to dictionary
         kp_rfix[kp] = kf
     return kp_rfix
 
 
 # %%
 def read_OIPswitches(book):
+    """read model excel sheet for run switch values
+
+    book -- open excel workbook\n
+    returns list of switch values
+    """
     # Warning: no error checking on read
     wbdata = su.read_openbook_namedsheet_range(
         book,
@@ -173,6 +183,11 @@ def read_OIPswitches(book):
 
 # %%
 def reload_OIPRandomFix():
+    """read model excel sheet for fix random param values & switches,
+    and update values for fixed case to replicate
+
+    reports/displays solution for (non-opt) premium pi, vs excel
+    """
     random_fix_index = 4
     bk = linkto_workbook(model_workbook_filename)
     kprf = read_OIPRandomFix(bk)
@@ -203,10 +218,10 @@ def reload_OIPRandomFix():
 
 # %%
 def read_OIP_market_data(book):
-    """Read oil market data (corresponding to some AEO version) from OIP worksheet.
+    """Read oil market data (corresponding to some AEO version) from OIP AEOData worksheet.
 
     book -- opened workbook object. Warning: no error checking on read.\n
-    return dictionary of data series (each a numpy array)
+    return dictionary of market data series (each a numpy array)
     """
     wbdata = su.read_openbook_namedsheet_range(
         book,
@@ -221,11 +236,16 @@ def read_OIP_market_data(book):
         market_data[r[0]] = np.array(
             r[2:]
         )  # drop blank col and 2005 col w/ incomplete data
-    return market_data
+    return market_data  # ToDo: change to read speced AEO, return dataframe
 
 
 # %%
 def set_market_data_for_year(md, year=2015):
+    """select market data for a particular year
+
+    md -- dict of market data series by year\n
+    return curr_mkt_parameter_cases, update global `oilmkt_parameter_cases`
+    """
     for n in range(len(md["Year"])):
         if int(round(md["Year"][n])) == year:
             break
@@ -274,6 +294,11 @@ pi_stat_names = [
 
 # %%
 def simulate_OIP(num_samples=1):
+    """simulate OIP calculation num_samples times for one year and param distributions
+
+    num_samples -- rand sample size for params. =1 for solution with default param values\n
+    return `sample_results` a numpy array of dim num_samples x num_tracked_vars
+    """
     global alt_parameter_cases, disrSizes, dirsProbs, OIP_default_switches
     global pi_component_names
     num_tracked_vars = len(pi_component_names)
@@ -370,9 +395,10 @@ def result_stats(results, component_names, debug=False):
 
 # %%
 def sim_OIP_over_years(num_samples=1, yearlist=[]):
-    """Execute OIP model for samplesize "num_samples", across years specied in "yearlist"
+    """Simulate OIP model for samplesize `num_samples`, across years specied in `yearlist`
+
     Returns
-      "yrly_rslts", a dictionary of simulation results for each year.
+      `yrly_rslts`, a dictionary of simulation results for each year.
     """
     bk = linkto_workbook(model_workbook_filename)
     md = read_OIP_market_data(bk)
@@ -472,6 +498,11 @@ def save_stats_to_CSV(rslts, filename=""):
     for y in rslts[0]:  # loop over years
         writer.writerow(y)
         writer.writerows(rslts[0][y])
+
+
+# %% [markdown]
+# Execution area
+# --------------
 
 
 # %%
