@@ -40,6 +40,18 @@ import sheet_utils as su
 import utilities  # for column_from2DList
 
 # %%
+# Read latest workbook to dataframes
+model_workbook_filename = "OIP2021v30r06.xlsm"
+model_sheet_name = "OilImportPremium2017"
+
+# read entire workbook to dict of dataframes, one for each sheet
+readnew_workbook = False
+if readnew_workbook:
+    wb = pd.read_excel(model_workbook_filename, sheet_name=None, header=None)
+    ws = wb[model_sheet_name]  # select desired sheet
+
+
+# %%
 model_workbook_filename = "Oil_Import_Premium_2005_risk_v21main_2011Dev_v14.xls"
 model_sheet_name = "OilImportPremium2005"
 
@@ -140,16 +152,18 @@ def read_OIPRandomFix(book):
         startcol=su.colname_to_num(cn="A"),
         endrow=72,
         endcol=su.colname_to_num(cn="T"),
-    )
+    )  # ToDo: in OIP2021 workbook, same range A1:T70 (df[0:70,0:20])
     # wbdata = sheet_utils.read_sheet_range(filename=wb_name,sheetnum=2)
     KeyParameterDescriptors = utilities.column_from2DList(wbdata, 0)[4:29]
     # print(KeyParameterDescriptors)
     KeyParameterRandomFix = utilities.column_from2DList(
         wbdata, su.colname_to_num(cn="S")
-    )[4:29]
-    # get the solution:
-    KeyParameterDescriptors.append(wbdata[65][0])
-    KeyParameterRandomFix.append(wbdata[65][4])
+    )[
+        4:29
+    ]  # ToDo: in OIP2021 workbook, same range S5:S29, entries differ
+    # get the solution: pi (Total)
+    KeyParameterDescriptors.append(wbdata[65][0])  # ToDo: in OIP2021 workbook, E64
+    KeyParameterRandomFix.append(wbdata[65][4])  # non-opt premium
     kp_rfix = {}
     kp_pairs = zip(KeyParameterDescriptors, KeyParameterRandomFix)
     for kp, kf in kp_pairs:  # convert kp_pairs to dictionary
@@ -173,7 +187,7 @@ def read_OIPswitches(book):
         endrow=10,
         endcol=su.colname_to_num(cn="H"),
     )
-    switches = [
+    switches = [  # ToDo: in OIP2021 workbook, switches in H1:H10
         int(round(wbdata[0][su.colname_to_num(cn="G")])),  # 2010 Switch_AEOVersion
         int(round(wbdata[2][su.colname_to_num(cn="G")])),  # 2015,    # Switch_Year
         wbdata[3][su.colname_to_num(cn="G")],  # 1.0,     # Switch_DomDem_ElasMult
@@ -237,7 +251,7 @@ def read_OIP_market_data(book):
         market_data[r[0]] = np.array(
             r[2:]
         )  # drop blank col and 2005 col w/ incomplete data
-    return market_data  # ToDo: change to read speced AEO, return dataframe
+    return market_data  # ToDo: change to read specified AEO, return dataframe
 
 
 # %%
