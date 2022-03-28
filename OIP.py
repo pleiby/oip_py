@@ -294,9 +294,19 @@ def test_mult_cases(num_samples=1):
 # ### `eval_one_case()`: Evaluation of a single case (Monte Carlo iteration, year, input set)
 
 # %%
-def eval_one_case(
-    alt_parameter_cases, disrSizes, disrProbs, OIP_switches, itercount=1, debug=False
-):
+def eval_one_case(alt_parameter_cases, disrSizes, disrProbs, OIP_switches, debug=False):
+    """complete OIP calculation one year and set of param values
+
+    alt_parameter_cases -- dict of param values for Low, Mid, High, Random & Fixed cases;
+    disrSizes --;
+    disrProbs --;
+    OIP_switches -- list of switches also governing cases;
+    debug=False\n
+    return `pi_components` a vector (list) of premium components and diagnostics for this one case\n
+
+    requires globals `oilmkt_parameter_cases` (selected case based on `alt_parameter_cases`)
+    """
+
     Switch_AEOVersion = OIP_switches[0]
     Switch_Year = OIP_switches[1]
     Switch_DomDem_ElasMult = OIP_switches[2]
@@ -306,7 +316,7 @@ def eval_one_case(
 
     # ======================================================================
     # Get parameter values associated with this selected Case
-    currcase = 4
+    currcase = 4  # 4 is RandomFixed from test case; 3 is Random
 
     # VarName                         Notes   # KEY PARAMETERS/ASSUMPTIONS                                                  # (Units       )
     I_u = alt_parameter_cases["Inflation Unaccomodated"][currcase]  # (Percent)
@@ -1146,8 +1156,4 @@ def calcBaseVars():
     #   S_iToUS_0 = S_OPEC - q_INonUS               # Net Import Supply to US  (Need to subtract OPEC demand) <-Unused->(MMBD)
     #   S_iToUS_1 = S_iToUS*(P_i1/P_i0)**e_SNetToUS  # Net Import Supply to US (MMBD)
     q_DNonUS_0 = q_INonUS + S_NO_0  # Other NonOPEC Demand (MMBD)
-
-
-#   q_DNonUS_1 = q_DNonUS_0*(P_i1/P_i0)**e_DNO     # Other NonOPEC Demand (MMBD)
-
-# calcBaseVars()
+    #   q_DNonUS_1 = q_DNonUS_0*(P_i1/P_i0)**e_DNO     # Other NonOPEC Demand (MMBD)
