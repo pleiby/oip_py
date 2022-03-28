@@ -1,3 +1,10 @@
 *.pyc
+
+# some R project files
 .Rproj.user
 .Rhistory
+
+# Mac OS files
+.DS_store
+# All files in this local directory
+/localfiles/*
