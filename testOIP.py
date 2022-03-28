@@ -34,7 +34,7 @@ from scipy import stats  # for scoreatpercentile
 
 # %%
 # import problem-specific utility files
-import OIP  # for test_mult_cases
+import OIP  # for test_mult_cases, test_one_case
 import rand_dists_added as rda
 import sheet_utils as su
 import utilities  # for column_from2DList
@@ -199,7 +199,7 @@ def read_OIPswitches(book):
 # %%
 def reload_OIPRandomFix():
     """read model excel sheet for fix random param values & switches,
-    and update values for fixed case to replicate
+    and update values for fixed case in global `alt_parameter_cases` to replicate
 
     reports/displays solution for (non-opt) premium pi, vs excel
     """
@@ -311,7 +311,7 @@ pi_stat_names = [
 def simulate_OIP(num_samples=1):
     """simulate OIP calculation num_samples times for one year and param distributions
 
-    num_samples -- rand sample size for params. =1 for solution with default param values\n
+    num_samples -- rand sample size for params. =-1 for solution with default/test param values\n
     return `sample_results` a numpy array of dim num_samples x num_tracked_vars\n
 
     requires and alters globals `OIP.alt_parameter_cases`, `OIP.disrSizes`,
@@ -523,7 +523,11 @@ def save_stats_to_CSV(rslts, filename=""):
 
 
 # %%
-# Execution area
+# Execute Test run, one year, one sample case:
+sim_OIP_over_years(num_samples=-1, yearlist=[2015])
+
+# %%
+# Execute Full run, multiple yaers and sample iterations
 annual_stats, annual_rslts = run_OIP(num_samples=10000, yearstep=5)
 
 

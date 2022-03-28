@@ -272,10 +272,18 @@ OIP_default_switches = [
 
 # %%
 def test_mult_cases(num_samples=1):
-    global alt_parameter_cases, disrSizes, dirsProbs, OIP_default_switches
+    """test utility to complete one OIP calculation or set of variant calculations
+
+    numsamples -- =-1 for one case with current default switches and parms, or >1 for spec set of variant cases (e.g. varying one parameter)
+
+    returns vector of total premium results `pi_tot` only.\n
+    requires globals `alt_parameter_cases`, `disrSizes`, `disrProbs`, `OIP_default_switches`
+    """
+
+    global alt_parameter_cases, disrSizes, disrProbs, OIP_default_switches
     sample_results = []
     switches = OIP_default_switches
-    if num_samples == -1:
+    if num_samples == -1:  # default case with debug == True
         sample_results = eval_one_case(
             alt_parameter_cases, disrSizes, disrProbs, switches, debug=True
         )
@@ -301,7 +309,7 @@ def eval_one_case(alt_parameter_cases, disrSizes, disrProbs, OIP_switches, debug
     disrSizes --;
     disrProbs --;
     OIP_switches -- list of switches also governing cases;
-    debug=False\n
+    debug=False -- print report on premium components if True\n
     return `pi_components` a vector (list) of premium components and diagnostics for this one case\n
 
     requires globals `oilmkt_parameter_cases` (selected case based on `alt_parameter_cases`)
