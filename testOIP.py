@@ -156,11 +156,12 @@ def read_OIPRandomFix(book):
     # wbdata = sheet_utils.read_sheet_range(filename=wb_name,sheetnum=2)
     KeyParameterDescriptors = utilities.column_from2DList(wbdata, 0)[4:29]
     # print(KeyParameterDescriptors)
+    # ToDo: in OIP2021 workbook, same range S5:S29, entries differ
+    # ToDo: check parameter names assoc w/ read data? That is done in `reload_OIPRandomFix`
     KeyParameterRandomFix = utilities.column_from2DList(
-        wbdata, su.colname_to_num(cn="S")
-    )[
-        4:29
-    ]  # ToDo: in OIP2021 workbook, same range S5:S29, entries differ
+        wbdata,
+        su.colname_to_num(cn="S"),
+    )[4:29]
     # get the solution: pi (Total)
     KeyParameterDescriptors.append(wbdata[65][0])  # ToDo: in OIP2021 workbook, E64
     KeyParameterRandomFix.append(wbdata[65][4])  # non-opt premium
@@ -198,8 +199,9 @@ def read_OIPswitches(book):
 
 # %%
 def reload_OIPRandomFix():
-    """read model excel sheet for fix random param values & switches,
-    and update values for fixed case in global `alt_parameter_cases` to replicate
+    """read model excel sheet for RandomFix param values & switches,
+    and update values for fixed case in global `alt_parameter_cases`,
+    and recompute premium components to test replication
 
     reports/displays solution for (non-opt) premium pi, vs excel
     """
@@ -269,7 +271,7 @@ def set_market_data_for_year(md, year=2015):
     for k in OIP.oilmkt_parameter_cases:
         if k not in md:
             print("Missing market data for: ", k)
-        else:
+        else:  # update based on matching key
             curr_mkt_parameter_cases[k] = md[k][n]
             OIP.oilmkt_parameter_cases[k][1] = md[k][
                 n
@@ -519,12 +521,14 @@ def save_stats_to_CSV(rslts, filename=""):
 
 # %% [markdown]
 # Execution area
-# --------------
+# ---------------------------------------------------------
 
 
 # %%
 # Execute Test run, one year, one sample case:
-sim_OIP_over_years(num_samples=-1, yearlist=[2015])
+case_rslts = sim_OIP_over_years(num_samples=-1, yearlist=[2015])
+case_rslts_df = pd.DataFrame(data=case_rslts, index=pi_component_names, columns=None)
+
 
 # %%
 # Execute Full run, multiple yaers and sample iterations
