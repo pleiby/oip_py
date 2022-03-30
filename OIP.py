@@ -45,8 +45,6 @@ import rand_dists_added as rda
 # ======================================================================
 alt_parameter_cases = {  # parameter cases are organized in a dictionary of lists
     "KEY_PARAMETERS_ASSUMPTIONS": ["Low", "Mid", "High", "Mean", "RandomFix"],
-    "Inflation Unaccomodated": [0, 0, 0, 0, 0],
-    "Recycle rate": [1, 1, 1, 1, 1],
     "GDP disr loss elasticity": [0.01, 0.032, 0.054, 0.03200, 0.032],
     "Ratio of Long-run GDP elas to SR GDP disr Elas": [0.25, 0.25, 0.25, 0.25000, 0.25],
     "Disruption reduction w/ imports": [0.00, 0.10, 0.30, 0.13333, 0.167004852],
@@ -106,11 +104,6 @@ oilmkt_parameter_cases = {
 #   and vector of distribution parameters.
 parameter_probabilities = {
     # Probability Cases":                                                     ["Low",  "Mid",  "High"]
-    "Inflation Unaccomodated": [
-        "risk_discrete",
-        [0.25, 0.5, 0.25],
-    ],  # =RiskDiscrete(O6:Q6,U6:W6)
-    "Recycle rate": ["risk_discrete", [0.25, 0.5, 0.25]],
     "GDP disr loss elasticity": ["risk_discrete", [0.25, 0.5, 0.25]],
     "Ratio of Long-run GDP elas to SR GDP disr Elas": [
         "risk_discrete",
@@ -211,8 +204,6 @@ disrProbs = np.array(disr_size_prob_cases["Case5EMF2005"])
 #       =RiskCumul(XlowBnd,XUpBnd,{XList0.25,1,4},{CumProbList 0.1,0.5,0.9})
 #
 #   =RiskDiscrete(O6:Q6,U6:W6)
-#   Inflation Unaccomodated
-#   Recycle rate
 #   GDP disr loss elasticity
 #   GDP-oil Price elast, Long-run/Short-run
 #   Disruption Length (yrs)
@@ -327,8 +318,9 @@ def eval_one_case(alt_parameter_cases, disrSizes, disrProbs, OIP_switches, debug
     currcase = 4  # 4 is RandomFixed from test case; 3 is Random
 
     # VarName                         Notes   # KEY PARAMETERS/ASSUMPTIONS                                                  # (Units       )
-    I_u = alt_parameter_cases["Inflation Unaccomodated"][currcase]  # (Percent)
-    R_recycle = alt_parameter_cases["Recycle rate"][currcase]  # (Percent)
+    sigma_usto = alt_parameter_cases["Tight Oil Fraction of US Supply"][
+        currcase
+    ]  # (Unitless)
     u_gdp = alt_parameter_cases["GDP disr loss elasticity"][currcase]  # (Unitless)
     ru_gdp = alt_parameter_cases["Ratio of Long-run GDP elas to SR GDP disr Elas"][
         currcase
@@ -372,20 +364,25 @@ def eval_one_case(alt_parameter_cases, disrSizes, disrProbs, OIP_switches, debug
     e_DNOr = alt_parameter_cases["Elas:Other NonOPEC Demand"][currcase]  # (Unitless)
     case_oilmkt = alt_parameter_cases["Oil Market (AEO) Case"][currcase]  # (Unitless)
     case_oilmktndx = int(round(case_oilmkt - 1))  # ToDo: chk strange xform
+    n_dlr = (
+        n_dlr * Switch_DomDem_ElasMult
+    )  # (adjusted) LR elas of US oil demand (Unitless)
+
+    GDP_0 = oilmkt_parameter_cases["undisrupted GDP"][case_oilmktndx]  # ($bill/yr)
+    # GDP_1 = GDP_0
+    Q_SPR = oilmkt_parameter_cases["SPR Size (MMB)"][case_oilmktndx]  # (Mill BBL)
 
     # OTHER EXOG INPUT: Base Mkt Supply, Demand and Price Conditions
-    #                               # Source:XXX
-    P_i0 = oilmkt_parameter_cases["import oil price"][case_oilmktndx]
+    # These params may differ between Base and Opt premium case
+    P_i0 = oilmkt_parameter_cases["import oil price"][case_oilmktndx]  # ($/BBL)
     # ($/BBL) P_i0 Exog , P_i1 = P_i0 + dP_i_dq_i1 *(q_i1-q_i0)
     q_d0 = oilmkt_parameter_cases["domestic oil demand"][case_oilmktndx]  # (MMBD)
     q_s0 = oilmkt_parameter_cases["domestic oil production"][case_oilmktndx]  # (MMBD)
     q_n0 = oilmkt_parameter_cases["domestic demand for oil substitutes (gas)"][
         case_oilmktndx
     ]  # (MMBD)
-    GDP_0 = oilmkt_parameter_cases["undisrupted GDP"][case_oilmktndx]  # ($bill/yr)
-    # GDP_1 = GDP_0
-    Q_SPR = oilmkt_parameter_cases["SPR Size (MMB)"][case_oilmktndx]  # (Mill BBL)
-    q_INonUS = oilmkt_parameter_cases["NonUS Net Import Demand"][
+    # q_n1 = q_n0
+    q_INonUS_0 = oilmkt_parameter_cases["NonUS Net Import Demand"][
         case_oilmktndx
     ]  # (MMBD)
     S_OPEC = oilmkt_parameter_cases["OPEC Supply"][case_oilmktndx]  # (MMBD)
@@ -396,11 +393,7 @@ def eval_one_case(alt_parameter_cases, disrSizes, disrProbs, OIP_switches, debug
         "OECD_Europe as Fraction of NonUS Consumption"
     ][
         case_oilmktndx
-    ]  # (Unitless shr)
-
-    n_dlr = (
-        n_dlr * Switch_DomDem_ElasMult
-    )  # (adjusted) LR elas of US oil demand (Unitless)
+    ]  # (Unitless shr) (Opt Same as Base)
 
     # ======================================================================
     #  Derived Parameters - Part 1
@@ -408,22 +401,19 @@ def eval_one_case(alt_parameter_cases, disrSizes, disrProbs, OIP_switches, debug
     P_d0                            P_d0 = P_i0, P_d1 chosen by solver   # domestic oil price ($/BBL)
     q_i0                            q_i0 = q_d0 - q_s0   # oil import level (MMBD)
     T_0                             T_k = P_dk - P_ik, but t_0 = 0 and Unused, T_1 = P_d1 - p_i1 determined by solver choice of P_d1   # Implicit tariff ($/BBL)
-    S_NO                            <-Unused-> S_NO_0 = S_tot - S_OPEC - q_s0; S_NO_1 = S_NO_0*(P_i1/P_i0)**e_SNO   # Other NonOPEC Supply (MMBD)
-    S_iToUS                         <-Unused-> S_iToUS_0 = S_OPEC - q_INonUS (Need to subtract OPEC demand); S_iToUS_1 = S_iToUS*(P_i1/P_i0)**e_SNetToUS    # Net Import Supply to US (MMBD)
-    q_DNonUS                        q_DNonUS_0 = q_INonUS + S_NO_0; q_DNonUS_1 = q_DNonUS_0*(P_i1/P_i0)**e_DNO   # Other NonOPEC Demand (MMBD)
+    S_NO_k                          <-Unused-> S_NO_0 = S_tot - S_OPEC - q_s0; S_NO_1 = S_NO_0*(P_i1/P_i0)**e_SNO   # Other NonOPEC Supply (MMBD)
+    S_iToUS_k                       <-Unused-> S_iToUS_0 = S_OPEC - q_INonUS_0 (Need to subtract OPEC demand); S_iToUS_1 = S_iToUS_1*(P_i1/P_i0)**e_SNetToUS_0    # Net Import Supply to US (MMBD)
+    q_DNonUS_k                      q_DNonUS_0 = q_INonUS_0 + S_NO_0; q_DNonUS_1 = q_DNonUS_0*(P_i1/P_i0)**e_DNO   # Other NonOPEC Demand (MMBD)
     """
-
-    S_iToUS = 0.0  # Net Import Supply to US (MMBD) <-Unused->  S_iToUS_0 = S_OPEC - q_INonUS (Need to subtract OPEC demand); S_iToUS_1 = S_iToUS*(P_i1/P_i0)**e_SNetToUS
 
     F_DNO_fixed = (
         sigma_EurNon * Switch_ConstrOECDEurDemand
     )  # Fraction of NonUS-NonOPEC demand which is fixed (Unitless)
-    e_SNO = e_SNOr  # Elas:Other NonOPEC Supply (Unitless)
-    e_SNO_1 = e_SNO  # Elas:Other NonOPEC Supply,  Alt same as Base (Unitless)
+    e_SNO = e_SNOr  # Elas:Other NonOPEC Supply (Unitless) Alt same as Base
     e_DNO = e_DNOr * (
         1.0 - F_DNO_fixed
-    )  # Elas:Other NonOPEC Demand, adjusted (Unitless)
-    e_DNO_1 = e_DNO  # Elas:Other NonOPEC Demand,  Alt same as Base (Unitless)
+    )  # Elas:Other NonOPEC Demand, adjusted (Unitless) Alt same as Base
+    # Elas:Other NonOPEC Demand,  Alt same as Base (Unitless)
 
     # Variables - Reference (non-Opt import level) values
     P_d0 = P_i0  # domestic oil price (P_d1 chosen by solver) ($/BBL)
@@ -432,12 +422,11 @@ def eval_one_case(alt_parameter_cases, disrSizes, disrProbs, OIP_switches, debug
     # T_k = P_dk - P_ik, but T_0 = 0 and Unused, T_1 = P_d1 - P_i1 determined by solver choice of P_d1   # Implicit tariff ($/BBL)
     S_NO_0 = S_tot - S_OPEC - q_s0  # Other NonOPEC Supply <-Unused-> (MMBD)
     #   S_NO_1 = S_NO_0*(P_i1/P_i1)**e_SNO
-    S_iToUS = (
-        S_OPEC - q_INonUS
+    S_iToUS_0 = (
+        S_OPEC - q_INonUS_0
     )  # Net Import Supply to US  (Need to subtract OPEC demand) <-Unused->(MMBD)
-    #   S_iToUS_0 = S_OPEC - q_INonUS               # Net Import Supply to US  (Need to subtract OPEC demand) <-Unused->(MMBD)
-    #   S_iToUS_1 = S_iToUS*(P_i1/P_i0)**e_SNetToUS  # Net Import Supply to US (MMBD)
-    q_DNonUS_0 = q_INonUS + S_NO_0  # Other NonOPEC Demand (MMBD)
+    #   S_iToUS_1 = S_iToUS_0*(P_i1/P_i0)**e_SNetToUS_0  # Net Import Supply to US (MMBD)
+    q_DNonUS_0 = q_INonUS_0 + S_NO_0  # Other NonOPEC Demand (MMBD)
     #   q_DNonUS_1 = q_DNonUS_0*(P_i1/P_i0)**e_DNO     # Other NonOPEC Demand (MMBD)
 
     # ======================================================================
@@ -460,7 +449,6 @@ def eval_one_case(alt_parameter_cases, disrSizes, disrProbs, OIP_switches, debug
     e_SOPEC                         - Exog - Taken from Above = dlnQsodlnP  # Elas:OPEC Supply (Unitless)
     e_SNO                           <-Unused-> - Exog -   # Elas:Other NonOPEC Supply (Unitless)
     e_DNO                           - Exog -   # Elas:Other NonOPEC Demand (Unitless)
-    e_SNetToUS                      e_SNetToUS=(S_OPEC*e_SOPEC-q_INonUS*e_INonUS)/(S_OPEC-q_INonUS)   # Elas:Net Import Supply to US (Unitless)
     F_DNO_fixed                     # Fraction of NonUS-NonOPEC demand which is fixed (Unitless)
     Chkn_SRdUS                      <-Unused-> Chkn_SRdUS = n_dlr * A_d   # Elas: SR Elas US Oil dmnd (chk) (Unitless)
     Chkn_SRsUS                      <-Unused-> Chkn_SRsUS = n_slr * A_s   # Elas: SR Elas US Oil supl (chk) (Unitless)
@@ -471,7 +459,6 @@ def eval_one_case(alt_parameter_cases, disrSizes, disrProbs, OIP_switches, debug
     sigma_Or        = 0.0           # Share: OPEC Supply as Share of World (Unitless) = S_OPEC/S_tot
     e_INonUS        = 0.0           # Elas:NonUS Net Import Demand (Unitless) '- Exog - Base== (e_DNO*q_DNonUS_0-e_SNO*S_NO_0)/(q_DNonUS_0-S_NO_0), Alt = Base
     e_SOPEC         = 0.0           # Elas:OPEC Supply (Unitless) - Exog - Taken from Above
-    e_SNetToUS      = 0.0           # Elas:Net Import Supply to US (Unitless) e_SNetToUS=(S_OPEC*e_SOPEC-q_INonUS*e_INonUS)/(S_OPEC-q_INonUS)
     F_DNO_fixed     = 0.0           # Fraction of NonUS-NonOPEC demand which is fixed (Unitless)
     Chkn_SRdUS      = 0.0           # Elas: SR Elas US Oil dmnd (chk) (Unitless) <-Unused-> Chkn_SRdUS = n_dlr * A_d
     Chkn_SRsUS      = 0.0           # Elas: SR Elas US Oil supl (chk) (Unitless) <-Unused-> Chkn_SRsUS = n_slr * A_s
@@ -488,9 +475,11 @@ def eval_one_case(alt_parameter_cases, disrSizes, disrProbs, OIP_switches, debug
     e_SOPEC = dlnQsodlnP  # Elas:OPEC Supply (Unitless)
     e_SOPEC_1 = e_SOPEC  # Alt same as Base (Unitless)
 
-    e_SNetToUS = (S_OPEC * e_SOPEC - q_INonUS * e_INonUS) / (
-        S_OPEC - q_INonUS
+    e_SNetToUS_0 = (S_OPEC * e_SOPEC - q_INonUS_0 * e_INonUS) / (
+        S_OPEC - q_INonUS_0
     )  # Elas:Net Import Supply to US (Unitless)
+    # e_SNetToUS_1 = (S_OPEC * e_SOPEC - q_INonUS_1 * e_INonUS) / (S_OPEC - q_INonUS_1)
+    # e_SNetToUS_k = (S_OPEC * e_SOPEC - q_INonUS_k * e_INonUS) / (S_OPEC - q_INonUS_k)   # Elas:Net Import Supply to US (Unitless)
     Chkn_SRdUS = n_dlr * A_d  # Elas: SR Elas US Oil dmnd (chk) (Unitless)
     Chkn_SRsUS = n_slr * A_s  # Elas: SR Elas US Oil supl (chk) (Unitless)
     sigma_eUS = (
@@ -520,12 +509,8 @@ def eval_one_case(alt_parameter_cases, disrSizes, disrProbs, OIP_switches, debug
     n_pe                            Opt Same as Base: - exog - (specified here)   # elasticity of oil import price w.r.t. exchange rate (Unitless)
     n_X                             Opt Same as Base: - exog - (specified here)   # price elas of demand for exports (Unitless)
     n_M                             Opt Same as Base: - exog - (specified here)   # price elas of demand for non-oil imports (Unitless)
-    XP_US                           Opt Same as Base: - exog - (specified here)   # value of exports ($billion) ($billion/yr)
-    MP_US                           Opt Same as Base: MP_US = 554 - (P_i0*q_i0*0.365)   # value of non-oil imports ($billion/yr)
     n_isr                           Opt Same as Base: - exog - (specified here)   # SR imported oil supply elasticity (generates param "b") (Unitless)
-    dP_i_dq_i                       Opt Same as Base: dP_i_dq_i = 1/(e_SNetToUS*q_i0/P_i0)   # derivative of normal market (LR?) inverse import supply (($/bbl)/MMBD)
-    I_u                             Opt Same as Base: (reproduced from above Key Parameter block)   # unaccomodated portion of inflation (%)                            (unitless (pe)
-    R_recycle                       Opt Same as Base: (reproduced from above Key Parameter block)   # fraction of marg oil revenue revs Recycled to US                  (unitless (pe)
+    dP_i_dq_i                       Opt Same as Base: dP_i_dq_i = 1/(e_SNetToUS_0*q_i0/P_i0)   # derivative of normal market (LR?) inverse import supply (($/bbl)/MMBD)
     u_gdp                           Opt Same as Base: (reproduced from above Key Parameter block)   # (absolute) elasticity of GDP w.r.t. oil price shock (Unitless)
     dEDelQ_dq_i                     Opt Same as Base: (reproduced from above Key Parameter block)   # change in Disruption size per unit change in LR import demand     (unitless (MM)
     F_o                             Opt Same as Base: (reproduced from above Key Parameter block)   # fraction of disruption offset by SPR (if greater) (Unitless)
@@ -555,14 +540,10 @@ def eval_one_case(alt_parameter_cases, disrSizes, disrProbs, OIP_switches, debug
     n_M = (
         -1.5
     )  # Opt Same as Base: - exog - (specified here)   # price elas of demand for non-oil imports (Unitless)
-    XP_US = 464.0  # Opt Same as Base: - exog - (specified here)   # value of exports ($billion) ($billion/yr)
-    MP_US = 554 - (
-        P_i0 * q_i0 * 0.365
-    )  # Opt Same as Base:                             # value of non-oil imports ($billion/yr)
     n_isr = 0.100  # Opt Same as Base: - exog - (specified here)   # SR imported oil supply elasticity (generates param "b") (Unitless)
-    dP_i_dq_i = 1 / (
-        e_SNetToUS * q_i0 / P_i0
-    )  # Opt Same as Base:    # derivative of normal market (LR?) inverse import supply (($/bbl)/MMBD)
+    dP_i_dq_i = 1 / (  # Opt Same as Base:
+        e_SNetToUS_0 * q_i0 / P_i0
+    )  # derivative of normal market (LR?) inverse import supply (($/bbl)/MMBD)
 
     # ======================================================================
     """
@@ -575,7 +556,6 @@ def eval_one_case(alt_parameter_cases, disrSizes, disrProbs, OIP_switches, debug
     dq_s_dP_d                       Opt Same as Base: dq_s0_dP_d0 = n_slr * q_s0/ P_d0   # derivative, LR domestic supply for oil (MMBD/($/BBL))
     n_dsr                           { Unused } Opt Same as Base: n_dsr = n_dlr * A_d   # SR elas of US oil demand (Unitless)
     n_ssr                           { Unused } Opt Same as Base: n_ssr = n_slr * A_s   # SR elas of US oil supply (Unitless)
-    n_eq_k                          n_eqk  =  (1-R_recycle)* (P_ik+dP_i_dq_i * q_ik)* q_ik/((n_X * XP_US + (n_M+1) * MP_US)/0.365- n_pe * P_ik* q_ik)   # price elas of exchange rate w.r.t. oil import price (Unitless)
     dQ_t_dq_ik                      dQ_t_dq_i0 = exog from above   # LR derivative total (oil&subst) demand w.r.t. import demand (Unitless)
     dP_ddq_ik                       dP_ddq_ik = 1/(dq_d_dP_dk - dq_s_dP_d) (formerly calculated from LR demand elas by dP_ddq_ik =(1/$n_dlr)*$P_d0/$q_d0)   # derivative, LR domestic inverse import demand curve (($/bbl)/MMBD)
     W_0                             w_k = 1 - Sum(j, w_kj)   # scale factor for tariff loss during Disruption (Unitless)
@@ -590,7 +570,7 @@ def eval_one_case(alt_parameter_cases, disrSizes, disrProbs, OIP_switches, debug
                                        #                                                                   (            )
     """
 
-    # NEXT xxxxxxxxxxxxxxx
+    # NEXT ----------------------
     # INTERMEDIATE CALCULATIONS
 
     b_isSR = n_isr * (
@@ -611,12 +591,7 @@ def eval_one_case(alt_parameter_cases, disrSizes, disrProbs, OIP_switches, debug
     n_ssr = (
         n_slr * A_s
     )  # SR elas of US oil supply ({ Unused } Opt Same as Base) (Unitless)
-    n_eqk = (
-        (1 - R_recycle)
-        * (P_ik + dP_i_dq_i * q_ik)
-        * q_ik
-        / ((n_X * XP_US + (n_M + 1) * MP_US) / 0.365 - n_pe * P_ik * q_ik)
-    )  # price elas of exchange rate w.r.t. oil import price (Unitless)
+    n_eqk = 0  # price elas of exchange rate w.r.t. oil import price (Unitless)
     dQ_t_dq_ik = dQ_t_dq_i0  # (UPDATE FOR DUAL CASE) LR derivative total (oil&subst) demand w.r.t. import demand (= exog from above) (Unitless)
     dP_ddq_ik = 1 / (
         dq_d_dP_dk - dq_s_dP_d
@@ -708,12 +683,12 @@ def eval_one_case(alt_parameter_cases, disrSizes, disrProbs, OIP_switches, debug
                                        #                                                                   (            )
                                        #                                                                   (            )
                                        # CHECKS:                                                           (            )
-    Chk_pi_m_elas                   = P_i0/e_SNetToUS   # Check: Monopsony Premium pi_m via elasticity                      (            )
-    Chk_pi_m_slope                  = q_i0*dP_i_dq_i   # Check: Monopsony Premium pi_m via price slope                     (            )
-    Chk_pi_m                        = pi_m   # Monopsony Premium Reported                                        (            )
+    Chk_pi_m_elas                   = P_ik/e_SNetToUS_k   # Check: Monopsony Premium pi_m via elasticity                      (            )
+    Chk_pi_m_slope                  = q_ik*dP_i_dq_i   # Check: Monopsony Premium pi_m via price slope                     (            )
+    Chk_pi_m                        = pi_mk   # Monopsony Premium Reported                                        (            )
     """
 
-    # xxx
+    # -------------------------------
     # Disruption Work Calculations
     DeltaQ_g_j = disrSizes  # DeltaQ_G, Gross shortfall to U.S. (MMBD)
     S_SPR_j = np.minimum(
@@ -817,9 +792,9 @@ def eval_one_case(alt_parameter_cases, disrSizes, disrProbs, OIP_switches, debug
     )  # Inverse Import Supply (Price) Slope (($/bbl)/MMBD)
 
     # CHECKS:                                                           (            )
-    # Chk_pi_m_elas                   = P_i0/e_SNetToUS   # Check: Monopsony Premium pi_m via elasticity                      (            )
-    # Chk_pi_m_slope                  = q_i0*dP_i_dq_i   # Check: Monopsony Premium pi_m via price slope                     (            )
-    # Chk_pi_m                        = pi_m   # Monopsony Premium Reported                                        (            )
+    # Chk_pi_m_elas                   = P_ik/e_SNetToUS_k   # Check: Monopsony Premium pi_m via elasticity                      (            )
+    # Chk_pi_m_slope                  = q_ik*dP_i_dq_i   # Check: Monopsony Premium pi_m via price slope                     (            )
+    # Chk_pi_m                        = pi_mk   # Monopsony Premium Reported                                        (            )
 
     w_k = 1 - np.sum(
         w_kj, 0
@@ -828,13 +803,13 @@ def eval_one_case(alt_parameter_cases, disrSizes, disrProbs, OIP_switches, debug
     # ======================================================================
     """
     # SIDE ANALYSIS:                                                    (            )
-    Pi_m_theor                      = P_i0/e_SNetToUS   # Theoretical Monoposony Premium ($/BBL)
+    Pi_m_theor                      = P_ik/e_SNetToUS_k   # Theoretical Monoposony Premium ($/BBL)
 
-    TB_NOd_USi                      e_DNO/e_SNetToUS*(q_DNonUS/S_iToUS) (compare to dq_dNO/dq_iUS)   # Theoretical: NonUS Demand Takeback, imports                       (Unitless (pe)
+    dq_dNO_over_dq_iUS_theor        = e_DNO/e_SNetToUS_k*(q_DNonUS_k/S_iToUS) (compare to dq_dNO/dq_iUS)   # Theoretical: NonUS Demand Takeback, imports                       (Unitless (pe)
 
     = q_DNonUS/S_iToUS              = q_DNonUS/S_iToUS   # NonUS Supply as multiple of US imports                            (Unitless (MM)
     dq_iNO_over_dq_dUS              Note: assumes a tariff, causing an increase in U.S. production   # Diagnostic: NonUS Demand Takeback                                 (Unitless (pe)
-    dq_iNO_over_dq_iUS              = (q_INonUS-q_INonUS)/(q_d1-q_d0)   # Diagnostic: NonUS Import Takeback                                 (Unitless (pe)
+    dq_iNO_over_dq_iUS              = (q_INonUS_1-q_INonUS_0)/(q_d1-q_d0)   # Diagnostic: NonUS Import Takeback                                 (Unitless (pe)
     dq_netNO_over_dq_iUS            = dq_sOPEC_over_dq_iUS - dq_iNO_over_dq_iUS   # Total Non-US net response (iNO + sOPEC)                           (Unitless (pe)
     TB_NOd_USi_v2                   = e_DNO*q_DNonUS/(e_SOPEC*S_OPEC + e_SNO*S_NO - e_DNO*q_DNonUS)   # Theoretical Takeback: dq_dNO/dq_iUS - revised form                (Unitless (pe)
     F_DNO_fixed_copy                = F_DNO_fixed  # Assumption: Fraction of NonUS-NonOPEC demand which is fixed       (Unitless (pe)
@@ -904,7 +879,7 @@ def eval_one_case(alt_parameter_cases, disrSizes, disrProbs, OIP_switches, debug
     P_i0                            P_ik   # Opt Import price ($/BBL)
       MCmonopsony_k                 MCmonopsony = dP_i_dq_i*q_ik/w_k   #   Monopsony Premium ($/BBL)
       MCbop_k                       =MCbop = P_ik *n_pe  *n_eqk /w_k   #   BOP Premium ($/BBL)
-      MCinf_k                       MCinf = Phi * Beta * I_u * ((dR_O_dQi * P_Ik + R_O * dP_i_dq_i)*( q_dk+ q_nk) + dQ_t_dq_ik * R_O*P_Ik)/w_k   #   Inf Premium ($/BBL)
+      MCinf_k                       0  #   Inf Premium ($/BBL)
       MClr_pot_k                    MClr_pot = 0 (included in price, since Marg Ben of import consumption = GDP contribution)   #   LR Potential Output Premium ($/BBL)
     MCLR_k                          MCLR = MCmonopsony + MCbop + MCinf + MClr_pot   # Dependency (Long-run) Premium ($/BBL)
       E_MCdis_SS_k                    MCdis_SS =  MCdis_vul_dDWL +  MCdis_size_dSSdDWL   #   SR Disruption DWL Premium ($/BBL)
@@ -971,16 +946,7 @@ def eval_one_case(alt_parameter_cases, disrSizes, disrProbs, OIP_switches, debug
     )  #   SR Disr marg effect of size on vuln costs ($/BBL)
     MCmonopsony_k = dP_i_dq_i * q_ik / w_k  #   Monopsony Premium ($/BBL)
     MCbop_k = P_ik * n_pe * n_eqk / w_k  #   BOP Premium ($/BBL)
-    MCinf_k = (
-        Phi
-        * Beta
-        * I_u
-        * (
-            (dR_O_dQi * P_ik + R_O * dP_i_dq_i) * (q_dk + q_nk)
-            + dQ_t_dq_ik * R_O * P_ik
-        )
-        / w_k
-    )  #   Inf Premium ($/BBL)
+    MCinf_k = 0  #   Inf Premium ($/BBL)
     MClr_pot_k = 0.0  # (included in price, since Marg Ben of import consumption = GDP contribution)   #   LR Potential Output Premium ($/BBL)
     MCLR_k = (
         MCmonopsony_k + MCbop_k + MCinf_k + MClr_pot_k
@@ -1009,10 +975,10 @@ def eval_one_case(alt_parameter_cases, disrSizes, disrProbs, OIP_switches, debug
     pi_d                            pi_d = pi_dm + pi_di   # Disruption: Total ($/BBL)
     pi                              pi = pi_m + pi_d   # Total        ($/BBL)
     dP_i_dq_i                       (reproduced from below)   # Diagnostic: Price Slope (($/bbl)/MMBD)
-    dq_iNO_over_dq_iUS              =(q_DNonUS_1-q_DNonUS_0)/(q_i1-q_i0),  and (q_INonUS1-q_INonUS0)/(q_i1-q_i0)   # Diagnostic: NonUS Demand Takeback, Import Takeback (Percent)
+    dq_iNO_over_dq_iUS              =(q_DNonUS_1-q_DNonUS_0)/(q_i1-q_i0),  and (q_INonUS_1-q_INonUS_0)/(q_i1-q_i0)   # Diagnostic: NonUS Demand Takeback, Import Takeback (Percent)
     dq_sOPEC_over_dq_iUS            =(S_NO_1-S_NO_0)/(q_i1-q_i0) and (S_OPEC1-S_OPEC0)/(q_i1-q_i0)   # Diagnostic: NonUS Supply Takeback, OPEC Supply (Percent)
     e_SOPEC                         (reproduced from above)   # Elas:OPEC Supply (Unitless)
-    e_SNetToUS                      (reproduced from above)   # Elas:Net Import Supply to US (Unitless)
+    e_SNetToUS_k                    (reproduced from above)   # Elas:Net Import Supply to US (Unitless)
     """
 
     # ======================================================================
@@ -1033,11 +999,11 @@ def eval_one_case(alt_parameter_cases, disrSizes, disrProbs, OIP_switches, debug
     pi_tot = pi_m + pi_d  # Total        ($/BBL)
     # dP_i_dq_i                       (reproduced from below)   # Diagnostic: Price Slope (($/bbl)/MMBD)
 
-    # dq_iNO_over_dq_iUS      = (q_DNonUS_1-q_DNonUS_0)/(q_i1-q_i0)  # and (q_INonUS1-q_INonUS0)/(q_i1-q_i0)   # Diagnostic: NonUS Demand Takeback, Import Takeback (Percent)
+    # dq_iNO_over_dq_iUS      = (q_DNonUS_1-q_DNonUS_0)/(q_i1-q_i0)  # and (q_INonUS_1-q_INonUS_0)/(q_i1-q_i0)   # Diagnostic: NonUS Demand Takeback, Import Takeback (Percent)
     # dq_sOPEC_over_dq_iUS    = (S_NO_1-S_NO_0)/(q_i1-q_i0)         # and (S_OPEC1-S_OPEC0)/(q_i1-q_i0)   # Diagnostic: NonUS Supply Takeback, OPEC Supply (Percent)
 
     # e_SOPEC                         (reproduced from above)   # Elas:OPEC Supply (Unitless)
-    # e_SNetToUS                      (reproduced from above)   # Elas:Net Import Supply to US (Unitless)
+    # e_SNetToUS_k                    (reproduced from above)   # Elas:Net Import Supply to US (Unitless)
     pi_components = [
         pi_tot,
         pi_m,
@@ -1058,14 +1024,14 @@ def eval_one_case(alt_parameter_cases, disrSizes, disrProbs, OIP_switches, debug
     if debug or np.isnan(pi_tot):
         print("P_i0", P_i0)
         print("q_i0", q_i0)
-        print("q_INonUS", q_INonUS)
+        print("q_INonUS_0", q_INonUS_0)
         print("S_OPEC", S_OPEC)
 
         print("n_dlr", n_dlr)
         print("e_DNO", e_DNO)
         print("e_INonUS", e_INonUS)
         print("e_SOPEC", e_SOPEC)
-        print("e_SNetToUS", e_SNetToUS)
+        print("e_SNetToUS_0", e_SNetToUS_0)
 
         print("dP_i_dq_i", dP_i_dq_i)
         print("MCmonopsony_k", MCmonopsony_k)
@@ -1148,8 +1114,8 @@ CaseEMF2005                     - exog - Decade Probs   # EMF2005 Midcase (test)
 
 # Variables - Reference (non-Opt import level) values
 def calcBaseVars():
-    global q_d0, q_s0, S_OPEC, S_tot, q_INonUS  # inputs
-    global P_d0, q_i0, T_0, S_NO, S_iToUS, q_DNonUS  # altered by this procedure
+    global q_d0, q_s0, S_OPEC, S_tot, q_INonUS_0  # inputs
+    global P_d0, q_i0, T_0, S_NO, S_iToUS_0, q_DNonUS  # altered by this procedure
     P_d0 = P_i0  # domestic oil price (P_d1 chosen by solver) ($/BBL)
     q_i0 = q_d0 - q_s0  # oil import level (q_ik same formula)(MMBD)
     T_0 = (
@@ -1158,10 +1124,10 @@ def calcBaseVars():
     S_NO = S_tot - S_OPEC - q_s0  # Other NonOPEC Supply <-Unused-> (MMBD)
     #   S_NO_0 = S_tot - S_OPEC - q_s0
     #   S_NO_1 = S_NO_0*(P_i1/P_i1)**e_SNO
-    S_iToUS = (
-        S_OPEC - q_INonUS
+    S_iToUS_0 = (
+        S_OPEC - q_INonUS_0
     )  # Net Import Supply to US  (Need to subtract OPEC demand) <-Unused->(MMBD)
-    #   S_iToUS_0 = S_OPEC - q_INonUS               # Net Import Supply to US  (Need to subtract OPEC demand) <-Unused->(MMBD)
-    #   S_iToUS_1 = S_iToUS*(P_i1/P_i0)**e_SNetToUS  # Net Import Supply to US (MMBD)
-    q_DNonUS_0 = q_INonUS + S_NO_0  # Other NonOPEC Demand (MMBD)
+    #   S_iToUS_0 = S_OPEC - q_INonUS_0               # Net Import Supply to US  (Need to subtract OPEC demand) <-Unused->(MMBD)
+    #   S_iToUS_1 = S_iToUS_0*(P_i1/P_i0)**e_SNetToUS_0  # Net Import Supply to US (MMBD)
+    q_DNonUS_0 = q_INonUS_0 + S_NO_0  # Other NonOPEC Demand (MMBD)
     #   q_DNonUS_1 = q_DNonUS_0*(P_i1/P_i0)**e_DNO     # Other NonOPEC Demand (MMBD)
