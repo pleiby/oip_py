@@ -265,7 +265,9 @@ OIP_default_switches = [
 def test_mult_cases(num_samples=1):
     """test utility to complete one OIP calculation or set of variant calculations
 
-    numsamples -- =-1 for one case with current default switches and parms, or >1 for spec set of variant cases (e.g. varying one parameter)
+    numsamples -- =-1 for one case with current default switches and parms,
+    or >1 for spec set of variant cases (e.g. varying one parameter).
+    Also uses current year market data in `oilmkt_parameter_cases`
 
     returns single vector of total premium results, or list of vectors \n
     requires globals `alt_parameter_cases`, `disrSizes`, `disrProbs`, `OIP_default_switches`
