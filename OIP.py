@@ -187,9 +187,9 @@ disr_size_prob_cases = {
     "Case3": [0.95, 0.50, 0.20],  # unitless  - exog - Decade Probs
     "Case4DOE90": [0.08, 0.06, 0.01],  # unitless  - exog - Decade/Annual? Probs
     "Case5EMF2005": [
-        0.2526331,
-        0.3643532,
-        0.1270871,
+        0.252633052143075,
+        0.364353207172899,
+        0.127087131573051,
     ],  # unitless  - exog - Decade Probs
 }
 
@@ -267,7 +267,7 @@ def test_mult_cases(num_samples=1):
 
     numsamples -- =-1 for one case with current default switches and parms, or >1 for spec set of variant cases (e.g. varying one parameter)
 
-    returns vector of total premium results `pi_tot` only.\n
+    returns single vector of total premium results, or list of vectors \n
     requires globals `alt_parameter_cases`, `disrSizes`, `disrProbs`, `OIP_default_switches`
     """
 
@@ -278,12 +278,16 @@ def test_mult_cases(num_samples=1):
         sample_results = eval_one_case(
             alt_parameter_cases, disrSizes, disrProbs, switches, debug=True
         )
-    else:
+    else:  # test desired set of cases
         for n in range(num_samples):
-            switches[2] = 1.0 + np.random.normal(0.0, 0.25)  # Switch_DomDem_ElasMult
+            switches[2] = 1.0 + np.random.normal(
+                0.0, 0.25
+            )  # test: alt values of Switch_DomDem_ElasMult
             sample_results.append(
-                eval_one_case(alt_parameter_cases, disrSizes, disrProbs, switches)[0]
-            )  # just gather pi_tot
+                eval_one_case(
+                    alt_parameter_cases, disrSizes, disrProbs, switches
+                )  # [0] if want `pi_tot` only
+            )
             if n % 100 == 0:
                 print(n)
     return sample_results
@@ -318,9 +322,11 @@ def eval_one_case(alt_parameter_cases, disrSizes, disrProbs, OIP_switches, debug
     currcase = 4  # 4 is RandomFixed from test case; 3 is Random
 
     # VarName                         Notes   # KEY PARAMETERS/ASSUMPTIONS                                                  # (Units       )
-    sigma_usto = alt_parameter_cases["Tight Oil Fraction of US Supply"][
-        currcase
-    ]  # (Unitless)
+    newversion = False
+    if newversion:
+        sigma_usto = alt_parameter_cases["Tight Oil Fraction of US Supply"][
+            currcase
+        ]  # (Unitless)
     u_gdp = alt_parameter_cases["GDP disr loss elasticity"][currcase]  # (Unitless)
     ru_gdp = alt_parameter_cases["Ratio of Long-run GDP elas to SR GDP disr Elas"][
         currcase
@@ -799,7 +805,7 @@ def eval_one_case(alt_parameter_cases, disrSizes, disrProbs, OIP_switches, debug
     w_k = 1 - np.sum(
         w_kj, 0
     )  # scale factor for tariff loss during Disruption (Unitless)
-
+    # ToDo: w_k is bit low, and should be differentiated by 0,1
     # ======================================================================
     """
     # SIDE ANALYSIS:                                                    (            )
@@ -946,7 +952,7 @@ def eval_one_case(alt_parameter_cases, disrSizes, disrProbs, OIP_switches, debug
     )  #   SR Disr marg effect of size on vuln costs ($/BBL)
     MCmonopsony_k = dP_i_dq_i * q_ik / w_k  #   Monopsony Premium ($/BBL)
     MCbop_k = P_ik * n_pe * n_eqk / w_k  #   BOP Premium ($/BBL)
-    MCinf_k = 0  #   Inf Premium ($/BBL)
+    MCinf_k = 0  #   Infl Premium ($/BBL)
     MClr_pot_k = 0.0  # (included in price, since Marg Ben of import consumption = GDP contribution)   #   LR Potential Output Premium ($/BBL)
     MCLR_k = (
         MCmonopsony_k + MCbop_k + MCinf_k + MClr_pot_k
