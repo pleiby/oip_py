@@ -163,8 +163,10 @@ def read_OIPRandomFix(book):
         su.colname_to_num(cn="S"),
     )[4:29]
     # get the solution: pi (Total)
-    KeyParameterDescriptors.append(wbdata[65][0])  # ToDo: in OIP2021 workbook, E64
-    KeyParameterRandomFix.append(wbdata[65][4])  # non-opt premium
+    # ToDo: in OIP2021 workbook, E60:E64
+    for rnum in range(61, 70):
+        KeyParameterDescriptors.append(wbdata[rnum][1])  # var name
+        KeyParameterRandomFix.append(wbdata[rnum][4])  # non-opt premium
     kp_rfix = {}
     kp_pairs = zip(KeyParameterDescriptors, KeyParameterRandomFix)
     for kp, kf in kp_pairs:  # convert kp_pairs to dictionary
@@ -195,42 +197,6 @@ def read_OIPswitches(book):
         wbdata[4][su.colname_to_num(cn="G")],  # 1.0     # Switch_ConstrOECDEurDemand
     ]
     return switches
-
-
-# %%
-def reload_OIPRandomFix():
-    """read model excel sheet for RandomFix param values & switches,
-    and update values for fixed case in global `alt_parameter_cases`,
-    and recompute premium components to test replication
-
-    reports/displays solution for (non-opt) premium pi, vs excel
-    """
-    random_fix_index = 4
-    bk = linkto_workbook(model_workbook_filename)
-    kprf = read_OIPRandomFix(bk)
-    for k in kprf:
-        if k in OIP.alt_parameter_cases:
-            OIP.alt_parameter_cases[k][random_fix_index] = kprf[k]
-        else:
-            print("Skipping: ", k)
-    OIP.OIP_default_switches = read_OIPswitches(bk)
-    print("OIP switches: ", OIP.OIP_default_switches)
-    # solve the case and compare
-    OIP_solution_for_pi = OIP.test_mult_cases(num_samples=-1)
-    print(OIP_solution_for_pi)
-    if kprf["Total"] == 0.0:
-        if OIP_solution_for_pi[0] == 0.0:
-            mratio = 1.0  # indicate match
-        else:
-            mratio = np.NaN
-    else:
-        mratio = OIP_solution_for_pi[0] / kprf["Total"]
-        # print(k, "samplesz=", len(samples[k]), "mean:",samples[k].mean(), "ratio:",mratio)
-        print(
-            "%30s samplesz: %7d value: %8.5f ratio: %8.5f"
-            % ("Total pi", 1, OIP_solution_for_pi[0], mratio)
-        )
-    return kprf
 
 
 # %%
@@ -433,6 +399,49 @@ def sim_OIP_over_years(num_samples=1, yearlist=[]):
 
 
 # %%
+def loadtest_OIPRandomFix():
+    """read model excel sheet for RandomFix param values & switches,
+    and update values for fixed case in global `alt_parameter_cases`,
+    and recompute premium components to test replication vs excel
+
+    reports/displays solution for (non-opt) premium pi, vs excel
+    """
+    random_fix_index = 4
+    bk = linkto_workbook(model_workbook_filename)
+    kprf = read_OIPRandomFix(bk)
+    for k in kprf:
+        if k in OIP.alt_parameter_cases:
+            OIP.alt_parameter_cases[k][random_fix_index] = kprf[k]
+        else:
+            print("Skipping: ", k)
+    OIP.OIP_default_switches = read_OIPswitches(bk)
+    print("OIP switches: ", OIP.OIP_default_switches)
+
+    # solve the case and compare
+    # OIP_solution_for_pi = OIP.test_mult_cases(num_samples=-1)
+    # OIP_solution_for_pi = OIP.eval_one_case(...)
+    yearwanted = OIP.OIP_default_switches[1]
+    OIP_solution_for_pi = sim_OIP_over_years(num_samples=-1, yearlist=[yearwanted])[
+        yearwanted
+    ]
+
+    print(OIP_solution_for_pi)
+    if kprf["pi"] == 0.0:
+        if OIP_solution_for_pi[0] == 0.0:
+            mratio = 1.0  # indicate match
+        else:
+            mratio = np.NaN
+    else:
+        mratio = OIP_solution_for_pi[0] / kprf["pi"]
+        # print(k, "samplesz=", len(samples[k]), "mean:",samples[k].mean(), "ratio:",mratio)
+        print(
+            "%30s samplesz: %7d value: %8.5f ratio: %8.5f"
+            % ("Total pi", 1, OIP_solution_for_pi[0], mratio)
+        )
+    return kprf
+
+
+# %%
 def gen_yearly_result_stats(yrly_rslts, component_names):
     """Generate statistics by year from a "yrly_rslts", a dictionary of simulation results by year
     Returns
@@ -523,6 +532,11 @@ def save_stats_to_CSV(rslts, filename=""):
 # Execution area
 # ---------------------------------------------------------
 
+# %%
+# read current RandomFix case in workbook, compare to calculated results
+# bk0 = linkto_workbook(model_workbook_filename)
+# kprf = read_OIPRandomFix(bk0)
+test_kprf = loadtest_OIPRandomFix()
 
 # %%
 # Execute Test run, one year, one sample case:
