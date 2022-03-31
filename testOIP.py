@@ -53,6 +53,7 @@ if readnew_workbook:
 
 # %%
 model_workbook_filename = "Oil_Import_Premium_2005_risk_v21main_2011Dev_v14.xls"
+# model_workbook_filename = "Oil_Import_Premium_2005_risk_v21main_2011Dev_v14r1_repaired1.xlsx"
 model_sheet_name = "OilImportPremium2005"
 
 # %%
@@ -150,7 +151,7 @@ def read_OIPRandomFix(book):
         sheetname=model_sheet_name,
         startrow=0,
         startcol=su.colname_to_num(cn="A"),
-        endrow=72,
+        endrow=97,
         endcol=su.colname_to_num(cn="T"),
     )  # ToDo: in OIP2021 workbook, same range A1:T70 (df[0:70,0:20])
     # wbdata = sheet_utils.read_sheet_range(filename=wb_name,sheetnum=2)
@@ -165,12 +166,12 @@ def read_OIPRandomFix(book):
     # get the solution: pi (Total)
     # ToDo: in OIP2021 workbook, E60:E64
     for rnum in range(61, 70):
-        KeyParameterDescriptors.append(wbdata[rnum][1])  # var name
+        KeyParameterDescriptors.append(wbdata[rnum][1].strip())  # var name
         KeyParameterRandomFix.append(wbdata[rnum][4])  # non-opt premium
-    kp_rfix = {}
-    kp_pairs = zip(KeyParameterDescriptors, KeyParameterRandomFix)
-    for kp, kf in kp_pairs:  # convert kp_pairs to dictionary
-        kp_rfix[kp] = kf
+    for rnum in range(86, 95):
+        KeyParameterDescriptors.append(wbdata[rnum][1].strip())  # var name
+        KeyParameterRandomFix.append(wbdata[rnum][4])  # non-opt premium
+    kp_rfix = dict(zip(KeyParameterDescriptors, KeyParameterRandomFix))
     return kp_rfix
 
 
@@ -409,11 +410,12 @@ def loadtest_OIPRandomFix():
     random_fix_index = 4
     bk = linkto_workbook(model_workbook_filename)
     kprf = read_OIPRandomFix(bk)
+
     for k in kprf:
         if k in OIP.alt_parameter_cases:
             OIP.alt_parameter_cases[k][random_fix_index] = kprf[k]
         else:
-            print("Skipping: ", k)
+            print("Skipping non-input: ", k)
     OIP.OIP_default_switches = read_OIPswitches(bk)
     print("OIP switches: ", OIP.OIP_default_switches)
 
@@ -424,20 +426,25 @@ def loadtest_OIPRandomFix():
     OIP_solution_for_pi = sim_OIP_over_years(num_samples=-1, yearlist=[yearwanted])[
         yearwanted
     ]
-
     print(OIP_solution_for_pi)
-    if kprf["pi"] == 0.0:
-        if OIP_solution_for_pi[0] == 0.0:
-            mratio = 1.0  # indicate match
+
+    solution = dict(zip(pi_component_names, OIP_solution_for_pi))
+    # compare solution to results read in from excel workbook
+    for k in solution:
+        if k in kprf:
+            if kprf[k] == 0.0:
+                if solution[k] == 0.0:
+                    mratio = 1.0  # indicate match
+                else:
+                    mratio = np.NaN
+            else:
+                mratio = solution[k] / kprf[k]
         else:
             mratio = np.NaN
-    else:
-        mratio = OIP_solution_for_pi[0] / kprf["pi"]
-        # print(k, "samplesz=", len(samples[k]), "mean:",samples[k].mean(), "ratio:",mratio)
         print(
-            "%30s samplesz: %7d value: %8.5f ratio: %8.5f"
-            % ("Total pi", 1, OIP_solution_for_pi[0], mratio)
+            "%30s samplesz: %7d value: %8.5f ratio: %8.5f" % (k, 1, solution[k], mratio)
         )
+
     return kprf
 
 
