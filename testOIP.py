@@ -428,6 +428,9 @@ def loadtest_OIPRandomFix():
     ]
     print(OIP_solution_for_pi)
 
+    if "pi" in kprf:  # ToDo: eliminate this temp name kludge
+        kprf["pi_tot"] = kprf["pi"]
+
     solution = dict(zip(pi_component_names, OIP_solution_for_pi))
     # compare solution to results read in from excel workbook
     for k in solution:
