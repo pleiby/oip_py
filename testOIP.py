@@ -35,8 +35,8 @@ from scipy import stats  # for scoreatpercentile
 # %%
 # import problem-specific utility files
 import OIP  # for test_mult_cases, test_one_case
-import rand_dists_added as rda
-import sheet_utils as su
+import rand_dists_added as rda  # random number generation
+import sheet_utils as su  # specify ranges, read workbooks, sheets and ranges
 import utilities  # for column_from2DList
 
 # %%
@@ -562,8 +562,8 @@ annual_stats, annual_rslts = run_OIP(num_samples=10000, yearstep=5)
 # %%
 # `annual_rslts` and `annual_stats` are dictionaries indexed by year, each element of which is array
 # np.size(annual_rslts)  # annual_rslts is a dictionary, so size gives little info
-annual_rslts.keys()
-np.size(annual_rslts[2020])
+annual_rslts.keys()  # keys are the years for each annual results array
+np.size(annual_rslts[2020])  # num_samples x len(pi_component_names)
 np.shape(annual_rslts[2020])
 
 # save_stats_to_CSV(annual_rslts,"testResults.csv") # does not work b.c. expects an array, not dictionary
