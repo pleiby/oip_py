@@ -4,6 +4,9 @@
 .Rproj.user
 .Rhistory
 
+# ipython notebook checkpoints
+*checkpoint.ipynb
+
 # Mac OS files
 .DS_store
 # All files in this local directory
