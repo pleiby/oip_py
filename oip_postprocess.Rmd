@@ -1,7 +1,7 @@
 ---
 title: "oip postprocess"
 author: "Paul Leiby"
-date: "4/3/2022"
+date: "5/1/2023"
 output: html_document
 ---
 
@@ -15,22 +15,42 @@ library(here)
 library(readxl)
 ```
 
-```{r}
-model_versionyear <- "OIP2022"
-model_subversion <- "v31"
-runset <- paste0("r0", 1:4)
+## Data Section'
 
+```{r}
 # Warning: following is machine-dependent path
 #. Could use here("..")
-OIP_model_output_path = "/Users/paulleiby/Documents/Papers/2006OilImportPremium/Analysis"
+# machine_base_path = "/Users/paulleiby/Documents" # PL Mac
+machine_base_path = "D:Workfiles" # PL Amanda Home Desktop
+OIP_model_output_path = "/Papers/2006OilImportPremium/Analysis"
+# OIP_model_output_path = here("..") does this work
+# Expected location of output files for each run of OIP (xlsx format)
+inputdata_subpath = "Data/inputdata" # path relative to project folder
 ```
 
+### Specify set of OIP Runs to be Processed
 
 ```{r}
+model_versionyear <- "OIP2022"
+model_subversion <- "v31" # note that tradition is lower-case v here
+```
+
+```{r}
+str_cmp_num <- function(s1, s2) {
+  # returns position of first character difference
+  # (mapply is faster than loop, but only works for equal-length objects)
+  mapply(function(x, y) which(x != y)[1], 
+     strsplit(s1, ""), strsplit(s2, ""))
+}
+
+str_cmp_num("Hello", "Helmo")
+```
+
+```{r}
+runset <- paste0("r0", 1:4)
+
 runset
-```
 
-```{r}
 AEOyear = "A2022"
 run_years = paste0("YR", c(2023, 2024, 2025, 2026, 2030, 2035, 2040, 2045, 2050 ))
 default_switchstring = "DE1CO1PC1"
@@ -42,40 +62,44 @@ case_file_names = paste0(model_versionyear, model_subversion,
 ```
 
 ```{r}
-case_file_names
-```
-
-```{r}
 # add caseset case-number extension (N1..Nn) to filename
 #. Unfortunately, this number is particular to the order in
 #. which the cases are run, rather than their content
 for (n in 1:length(case_file_names)) {
-  case_file_names[n] <- paste0(case_file_names[n], "N", n)
+  case_file_names[n] <- paste0(case_file_names[n], "SN", n)
 }
 ```
 
+```{r}
+case_file_names
+```
 
 ```{r}
 # test that an expected case is in the set
-case_example = "OIP2022v31r03_A2022YR2023DE1CO1PC1N1"
+case_example = "OIP2022v31r03_A2022YR2023DE1CO1PC1SN1"
 
 case_example %in% case_file_names
 ```
 
 ```{r}
+# # note that tradition is upper-case v here for version number in directory names
 input_subdirs <- c(paste0(toupper(model_subversion), runset))
 input_subdirs
 
-input_path <- c("input", input_subdirs[runset_num])
-input_path
+input_path_components <- c(inputdata_subpath, toupper(model_subversion), input_subdirs[runset_num])
+input_path_components
 ```
 
 ```{r findingFilesAndDirs}
-list_of_dirs <- list.dirs(here("input"), recursive=FALSE) # list of subdirectories to "input"
+list_of_dirs <- list.dirs(here(inputdata_subpath), recursive=FALSE) # list of subdirectories to "input"
+list_of_dirs
 
-list_of_files <- list.files(here("input", input_subdirs[runset_num]), recursive=FALSE) # list of run files in one directory
+list_of_files <- list.files(here(paste(input_path_components, collapse = "/")), recursive=FALSE) # list of files in one runset directory
 list_of_files
+```
 
+
+```{r test_foundFilesAndDirs}
 "OIP2022v31r03_A2022YR2023DE1CO1PC1SN1.xlsx" %in% list_of_files
 
 ```
@@ -86,8 +110,10 @@ case_num <- 1
 
 
 rslt <- here(
-  paste(input_path, collapse = "/"),
-  paste0(case_file_names[case_num], "SN", case_num, ".xlsx")
+  paste(input_path_components, collapse = "/"),
+  paste0(case_file_names[case_num],
+         # "SN", case_num,
+         ".xlsx")
   ) %>%
   read_excel()
 
@@ -96,7 +122,11 @@ class(rslt)
 ```
 
 ```{r}
-read_one_excel_case <- function(ncase, nset) {
+read_one_excel_case <- function(path_spec, nset, ncase) {
+  # nset: number of set of cases (usually years for same param values)
+  # ncase: number of case within set of cases"
+  # Globals: that define cases:
+  #   model_versionyear, model_subversion, runset, AEOyear, run_years, default_switchstring
   case_file_name = paste0(
     model_versionyear, 
     model_subversion, 
@@ -106,7 +136,7 @@ read_one_excel_case <- function(ncase, nset) {
     default_switchstring
     )
   rslt <- here(
-      paste(input_path, collapse = "/"),
+      paste(path_spec, collapse = "/"),
       paste0(case_file_name, "SN", ncase, ".xlsx")
     ) %>%
     read_excel(range = "B11:AA39") %>%
@@ -136,13 +166,12 @@ extract_basic_rslts <- function(raw_rstl) {
 runset_num = 3
 case_num = 1
 
-rslt <- read_one_excel_case(case_num, runset_num)
+rslt <- read_one_excel_case(input_path_components, runset_num, case_num)
 
 for (case_num in 1:9) {
   
   cat("reading case_set", runset_num, " case", case_num, "\n")
-  rslt <- read_one_excel_case(case_num, runset_num)
-
+  rslt <- read_one_excel_case(input_path_components, runset_num, case_num)
   #  extract_basic_rslts() -> rslt
   if (case_num == 1) {
     rslts <- rslt
