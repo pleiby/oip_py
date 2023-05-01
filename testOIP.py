@@ -41,20 +41,20 @@ import utilities  # for column_from2DList
 
 # %%
 # Read latest workbook to dataframes
-model_workbook_filename = "OIP2021v30r06.xlsm"
+model_workbook_filename = "worksheet_data/localfiles/OIP2021v30r06.xlsm"
 model_sheet_name = "OilImportPremium2017"
 
 # read entire workbook to dict of dataframes, one for each sheet
-readnew_workbook = False
+readnew_workbook = True
 if readnew_workbook:
     wb = pd.read_excel(model_workbook_filename, sheet_name=None, header=None)
     ws = wb[model_sheet_name]  # select desired sheet
 
 
 # %%
-model_workbook_filename = "Oil_Import_Premium_2005_risk_v21main_2011Dev_v14.xls"
+old_model_workbook_filename = "Oil_Import_Premium_2005_risk_v21main_2011Dev_v14.xls"
 # model_workbook_filename = "Oil_Import_Premium_2005_risk_v21main_2011Dev_v14r1_repaired1.xlsx"
-model_sheet_name = "OilImportPremium2005"
+old_model_sheet_name = "OilImportPremium2005"
 
 # %%
 ## # Test functions for generation of discrete random distribution
