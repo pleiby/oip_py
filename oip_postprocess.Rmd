@@ -15,14 +15,18 @@ library(here)
 library(readxl)
 ```
 
-## Data Section'
+## Data Section
+
+#### Expected location of input data (result files from past runs of OIP)
+
+Locations of input and outputs are all relative to location of project directory.
 
 ```{r}
 # Warning: following is machine-dependent path
-#. Could use here("..")
+#. Instead, prefer to use here("..")
 # machine_base_path = "/Users/paulleiby/Documents" # PL Mac
-machine_base_path = "D:Workfiles" # PL Amanda Home Desktop
-OIP_model_output_path = "/Papers/2006OilImportPremium/Analysis"
+# machine_base_path = "D:Workfiles" # PL Amanda Home Desktop
+# OIP_model_output_path = "/Papers/2006OilImportPremium/Analysis"
 
 # Expected location of output files for each run of OIP (xlsx format)
 # Warning: this is the path _relative_ to the project, and can look outside the project folder for data
@@ -32,30 +36,35 @@ inputdata_subpath = ".." # OIP_model_output_path = here(".."), just above projec
 output_subpath <- "Output" # destination for any output
 ```
 
-### Specify set of OIP Runs to be Processed
+#### Specify set of OIP Runs to be Processed
 
 ```{r}
-model_versionyear <- "OIP2022"
-model_subversion <- "v31" # note that tradition is lower-case v here
+model_versionyears <- c("OIP2022", "OIP2023")
+model_subversions <- c("v31", "v32") # each goes with the corresponding model_versionyear
+
+model_versionyear <- model_versionyears[1]
+model_subversion <- model_subversions[1]
 ```
 
-```{r}
-str_cmp_num <- function(s1, s2) {
-  # returns position of first character difference
-  # (mapply is faster than loop, but only works for equal-length objects)
-  mapply(function(x, y) which(x != y)[1], 
-     strsplit(s1, ""), strsplit(s2, ""))
-}
-
-# Test this fn
-# str_cmp_num("Hello", "Helmo") == 4
-```
 
 ```{r}
 runset <- paste0("r0", 1:4)
-
 runset
+```
 
+#### Following data specify one standard set of runs expected
+
+More generally, we can just read whatever OIP run result files are found.
+
+Standard OIP run result files have following name/location conventions:
+
+- Begin with `model_versionyear`, `model_subversion`, run set indicator, and underscore, as in "OIPYYYY" "v31" "r01_", i.e. `r paste0(model_versionyear, model_subversion, paste0("r0", 1))`
+- Are Excel data files ending with extension ".xlsx"
+- Are stored in neighboring directory `toupper(model_subversion)`, as in `r toupper(model_subversion)`
+- Each set is stored in subdirectory bases on `model_subversion` and `run_num`, as in, for `runset` 1: `r `
+
+
+```{r}
 AEOyear = "A2022"
 run_years = paste0("YR", c(2023, 2024, 2025, 2026, 2030, 2035, 2040, 2045, 2050 ))
 default_switchstring = "DE1CO1PC1"
@@ -80,17 +89,13 @@ case_file_firstnames
 ```
 
 ```{r}
-# test that an expected case is in the set
-case_example = "OIP2022v31r03_A2022YR2023DE1CO1PC1SN1"
-
-case_example %in% case_file_firstnames
-```
-
-```{r}
 # # note that tradition is upper-case v here for version number in directory names
 input_subdirs <- c(paste0(toupper(model_subversion), runset))
 input_subdirs
+```
 
+
+```{r}
 input_path_components <- c(inputdata_subpath, toupper(model_subversion), input_subdirs[runset_num])
 input_path_components
 ```
@@ -103,27 +108,18 @@ list_of_files <- list.files(here(paste(input_path_components, collapse = "/")), 
 list_of_files
 ```
 
+### Function Definitions
 
-```{r test_foundFilesAndDirs}
-"OIP2022v31r03_A2022YR2023DE1CO1PC1SN1.xlsx" %in% list_of_files
+```{r defFn_str_cmp_num}
+str_cmp_num <- function(s1, s2) {
+  # returns position of first character difference
+  # (mapply is faster than loop, but only works for equal-length objects)
+  mapply(function(x, y) which(x != y)[1], 
+     strsplit(s1, ""), strsplit(s2, ""))
+}
 
-```
-
-
-```{r}
-run_num <- 1
-
-
-rslt <- here(
-  paste(input_path_components, collapse = "/"),
-  paste0(case_file_firstnames[run_num],
-         # "SN", run_num,
-         ".xlsx")
-  ) %>%
-  read_excel()
-
-class(rslt)
-
+# Test this fn
+# str_cmp_num("Hello", "Helmo") == 4
 ```
 
 ```{r defFn_construct_case_file_firstname}
@@ -169,7 +165,6 @@ read_one_excel_case <- function(case_file_firstname, path_spec) {
 ```
 
 
-
 ```{r defFn_extract_basic_rslts}
 extract_basic_rslts <- function(raw_rstl) {
   rsltx <- rslt[10:38,2:27]
@@ -181,14 +176,6 @@ extract_basic_rslts <- function(raw_rstl) {
     filter(!is.na(Year) & Year != 0)
 }
 
-```
-
-```{r}
-runset_num = 3
-run_num = 1
-
-case_file_firstname = construct_case_file_firstname(runset_num, run_num, default_switchstring)
-rslt <- read_one_excel_case(case_file_firstname, input_path_components)
 ```
 
 
@@ -296,13 +283,32 @@ process_one_found_set_of_cases <- function(mod_versionyear, mod_subversion, runs
 ```
 
 
+### Execution Section
+
+Test reading one result case
+
 ```{r}
+runset_num = 3
+run_num = 1
+
+case_file_firstname = construct_case_file_firstname(runset_num, run_num, default_switchstring)
+rslt <- read_one_excel_case(case_file_firstname, input_path_components)
+```
+
+Test reading a set of cases based on expected names
+
+```{r include=F, eval=F}
 set_rslts <- process_one_expected_set_of_cases(default_switchstring)
 ```
 
-```{r saveRsltsToCSV}
-save_results <- T
-if (save_results) {
+Set logical flag for whether to save process results or not
+
+```{r}
+save_results_to_CSV <- T
+```
+
+```{r saveExpectedRsltsToCSV, include=F, eval=F}
+if (save_results_to_CSV) {
   write_csv(set_rslts, here(output_subpath, paste0(model_versionyear, model_subversion, runset[runset_num], ".csv")))
 }
 
@@ -310,16 +316,44 @@ dim(set_rslts)
 
 ```
 
-```{r}
-runset_num <- 4
-set_rslts <- process_one_found_set_of_cases(model_versionyear, model_subversion, runset_num)
+### Process Multiples OIP Result Cases
+
+Read Multiple Sets of Cases, Taking and Result Files Found, and Store in CSV files
+
+```{r grandLoopOverModelsAndCases}
+set_rslts = list()
+
+for (i in 1:2) { # could actually find the subdirectories, but whatever
+  model_versionyear <- model_versionyears[i]
+  model_subversion <- model_subversions[i]
+
+  for (runset_num in 1:4) {
+  
+    listkey <- paste0(model_versionyear, model_subversion, "r0", runset_num )
+    
+    set_rslts[[listkey]] <- process_one_found_set_of_cases(model_versionyear, model_subversion, runset_num)
+  
+    if (save_results_to_CSV) {
+      write_csv(set_rslts[[listkey]], 
+                here(output_subpath, paste0(model_versionyear, model_subversion, runset[runset_num], ".csv")))
+    }
+  } # for runset_num
+} # for i
+
 ```
 
 ```{r}
-if (save_results) {
-  write_csv(set_rslts, here(output_subpath, paste0(model_versionyear, model_subversion, runset[runset_num], ".csv")))
+all_rslts <- bind_rows(set_rslts)
+
+```
+
+
+
+```{r saveFounRsltsToCSV}
+if (save_results_to_CSV) {
+  write_csv(all_rslts, 
+            here(output_subpath, paste0("all_rslts", ".csv")))
 }
 
-dim(set_rslts)
 ```
 
