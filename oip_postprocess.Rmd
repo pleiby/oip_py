@@ -23,9 +23,12 @@ library(readxl)
 # machine_base_path = "/Users/paulleiby/Documents" # PL Mac
 machine_base_path = "D:Workfiles" # PL Amanda Home Desktop
 OIP_model_output_path = "/Papers/2006OilImportPremium/Analysis"
-# OIP_model_output_path = here("..") does this work
+
 # Expected location of output files for each run of OIP (xlsx format)
-inputdata_subpath = "Data/inputdata" # path relative to project folder
+# Warning: this is the path _relative_ to the project, and can look outside the project folder for data
+# inputdata_subpath = "Data/inputdata" # path relative to project folder
+inputdata_subpath = ".." # OIP_model_output_path = here(".."), just above project dir location. Does this work
+
 output_subpath <- "Output" # destination for any output
 ```
 
@@ -44,7 +47,8 @@ str_cmp_num <- function(s1, s2) {
      strsplit(s1, ""), strsplit(s2, ""))
 }
 
-str_cmp_num("Hello", "Helmo")
+# Test this fn
+# str_cmp_num("Hello", "Helmo") == 4
 ```
 
 ```{r}
@@ -57,7 +61,7 @@ run_years = paste0("YR", c(2023, 2024, 2025, 2026, 2030, 2035, 2040, 2045, 2050 
 default_switchstring = "DE1CO1PC1"
 
 runset_num = 3
-case_file_names = paste0(model_versionyear, model_subversion,
+case_file_firstnames = paste0(model_versionyear, model_subversion,
                          runset[runset_num], "_", AEOyear, run_years, 
                          default_switchstring)
 ```
@@ -66,20 +70,20 @@ case_file_names = paste0(model_versionyear, model_subversion,
 # add caseset case-number extension (N1..Nn) to filename
 #. Unfortunately, this number is particular to the order in
 #. which the cases are run, rather than their content
-for (n in 1:length(case_file_names)) {
-  case_file_names[n] <- paste0(case_file_names[n], "SN", n)
+for (n in 1:length(case_file_firstnames)) {
+  case_file_firstnames[n] <- paste0(case_file_firstnames[n], "SN", n)
 }
 ```
 
 ```{r}
-case_file_names
+case_file_firstnames
 ```
 
 ```{r}
 # test that an expected case is in the set
 case_example = "OIP2022v31r03_A2022YR2023DE1CO1PC1SN1"
 
-case_example %in% case_file_names
+case_example %in% case_file_firstnames
 ```
 
 ```{r}
@@ -107,13 +111,13 @@ list_of_files
 
 
 ```{r}
-case_num <- 1
+run_num <- 1
 
 
 rslt <- here(
   paste(input_path_components, collapse = "/"),
-  paste0(case_file_names[case_num],
-         # "SN", case_num,
+  paste0(case_file_firstnames[run_num],
+         # "SN", run_num,
          ".xlsx")
   ) %>%
   read_excel()
@@ -122,19 +126,21 @@ class(rslt)
 
 ```
 
-```{r defFn_construct_case_file_name}
-construct_case_file_name <- function(nset, ncase) {
+```{r defFn_construct_case_file_firstname}
+construct_case_file_firstname <- function(nset, ncase, curr_switchstring) {
+  # Construct the name of an expected file, for a number of setting and numberings
   # nset: number of set of cases (usually years for same param values)
   # ncase: number of case within set of cases"
   # Globals: that define cases:
-  #   model_versionyear, model_subversion, runset, AEOyear, run_years, default_switchstring
+  #   model_versionyear, model_subversion, runset, AEOyear, run_years
+  # Uses passed var `curr_switchstring instead of global `default_switchstring`
   c_file_name = paste0(
     model_versionyear, 
     model_subversion, 
     runset[nset], "_", 
     AEOyear, 
     run_years[ncase], 
-    default_switchstring,
+    curr_switchstring,
     "SN", ncase
     )
   c_file_name
@@ -143,11 +149,11 @@ construct_case_file_name <- function(nset, ncase) {
 ```
 
 ```{r defFn_read_one_excel_case}
-read_one_excel_case <- function(case_file_name, path_spec) {
+read_one_excel_case <- function(case_file_firstname, path_spec) {
   
   full_case_path_spec <- here(
       paste(path_spec, collapse = "/"),
-      paste0(case_file_name, ".xlsx")
+      paste0(case_file_firstname, ".xlsx")
     )
   
   # check for file existence first
@@ -179,28 +185,30 @@ extract_basic_rslts <- function(raw_rstl) {
 
 ```{r}
 runset_num = 3
-case_num = 1
+run_num = 1
 
-case_file_name = construct_case_file_name(runset_num, case_num)
-rslt <- read_one_excel_case(case_file_name, input_path_components)
+case_file_firstname = construct_case_file_firstname(runset_num, run_num, default_switchstring)
+rslt <- read_one_excel_case(case_file_firstname, input_path_components)
 ```
 
 
-```{r}
-process_one_set_of_cases <- function() {
-  
+```{r defFn_process_one_expected_set_of_cases}
+process_one_expected_set_of_cases <- function(curr_switchstring) {
+  # processes a set of cases based on _expected case names and switch settings
+  #  The expected file names are constructed from anticipated year, numberings, and switch
   print(paste0("Processing `model_versionyear` ", model_versionyear, 
       ", `sub_version` ", model_subversion))
   rslts = tibble() # initialize results df
   
-  for (case_num in 1:9) { # assume 9 cases (years) per set. 
+  for (run_num in 1:9) { # assume 9 cases (years) per set. 
     
-    print(paste0("  reading case_set ", runset_num, " case ", case_num))
-    case_file_name = construct_case_file_name(runset_num, case_num)
-    rslt <- read_one_excel_case(case_file_name, input_path_components)
+    case_ffname = construct_case_file_firstname(runset_num, run_num, curr_switchstring)
+    
+    print(paste0("  reading case_set ", runset_num, " case ", run_num, ", ", case_ffname))
+    rslt <- read_one_excel_case(case_ffname, input_path_components)
     
     if (is.null(rslt)) {
-      print(paste0("    Error or file not found for case ", case_file_name))
+      print(paste0("    Error or file not found for case ", case_ffname))
     } else { # non-NULL return from file read
       #  extract_basic_rslts() -> rslt
       if (nrow(rslts) == 0) { # first non-NULL result, initialize df format
@@ -216,8 +224,72 @@ process_one_set_of_cases <- function() {
       model_versionyear = model_versionyear,
       model_subversion = model_subversion,
       runset_num = runset_num,
-      case_num = case_num,
-      case_file_name = case_file_name
+      run_num = run_num,
+      case_file_firstname = case_ffname
+    )
+    rslts
+}
+```
+
+```{r defFn_process_one_found_set_of_cases}
+process_one_found_set_of_cases <- function(mod_versionyear, mod_subversion, runset_n) {
+  # processes a set of OIP case results found in a directory determined by mod_subversion and runset_n
+  #  (no restriction on set of cases other than the follow conventions
+  #    for start of the name, and directory/subdirectory)
+  #
+  #  `mod_versionyear`: typically  OIPYYYY, first part of model, base on year of analysis
+  #  `mod_subversion`: is typically "Vnn", for some digits nn, a version of the OIP model
+  #  `runset_n`: a single digit (number) indicating a set of cases completed (usually encoded in the OIP model name)
+  #  # or? runset: a numerical vector of 1 or more numbers sets of runs (number typically are single digit)
+  # 
+  #  The directory with the runs is expected to be:
+  #     `paste0(toupper(mod_subversion),"/", toupper(mod_subversion), "r0", runset_num)`
+  #  The expected file names are of xlsx type, and 
+  #  begin with OIPYYYYvNNrMM_" (the underscore distinguishing result cases from the model file itself
+  # References Global: `inputdata_subpath`
+  curr_runset <-  paste0("r0", runset_n)
+  input_dir <- toupper(mod_subversion)
+  input_subdir <- paste0(toupper(mod_subversion), curr_runset)
+  # these are the pieces of the path to the result file subdirectory, relative to the project directory
+  input_path_compons <- c(inputdata_subpath, input_dir, input_subdir)
+  
+  # list of files in one runset directory
+  list_of_rslt_files <- list.files(here(paste(input_path_compons, collapse = "/")), recursive=FALSE)
+  expected_filename_start <- paste0(mod_versionyear, mod_subversion, curr_runset, "_")
+  # filter out filenames that don't have expected initial characters for result files, or have std Excel extension
+  list_of_rslt_files <- list_of_rslt_files[str_starts(list_of_rslt_files, expected_filename_start)]
+  list_of_rslt_files <- str_sort(list_of_rslt_files[str_ends(list_of_rslt_files, ".xlsx")])
+  
+  print(paste0("Processing `model_versionyear` ", mod_versionyear, 
+      ", `sub_version` ", mod_subversion, ", ", length(list_of_rslt_files), " cases:"))
+  rslts = tibble() # initialize results df
+  
+  for (case_file_name in list_of_rslt_files) { # assume 9 cases (years) per set. 
+    
+    case_ffname <- str_remove(case_file_name, ".xlsx") # strip the file extension to just get file firstname
+    print(paste0("  reading case_set ", runset_n, " case ", case_ffname))
+
+    rslt <- read_one_excel_case(case_ffname, input_path_compons)
+    
+    if (is.null(rslt)) {
+      print(paste0("    Error or file not found for case ", case_ffname))
+    } else { # non-NULL return from file read
+      #  extract_basic_rslts() -> rslt
+      if (nrow(rslts) == 0) { # first non-NULL result, initialize df format
+        rslts <- rslt
+      } else { # concatenate rows (expecting consistent columns)
+        rslts <- bind_rows(rslts, rslt)
+      }
+    }
+  }
+  
+  rslts <- rslts %>%
+    mutate(
+      model_versionyear = mod_versionyear,
+      model_subversion = mod_subversion,
+      runset_num = runset_n,
+      run_num = NA,
+      case_file_firstname = case_ffname
     )
     rslts
 }
@@ -225,7 +297,7 @@ process_one_set_of_cases <- function() {
 
 
 ```{r}
-set_rslts <- process_one_set_of_cases()
+set_rslts <- process_one_expected_set_of_cases(default_switchstring)
 ```
 
 ```{r saveRsltsToCSV}
@@ -236,5 +308,18 @@ if (save_results) {
 
 dim(set_rslts)
 
+```
+
+```{r}
+runset_num <- 4
+set_rslts <- process_one_found_set_of_cases(model_versionyear, model_subversion, runset_num)
+```
+
+```{r}
+if (save_results) {
+  write_csv(set_rslts, here(output_subpath, paste0(model_versionyear, model_subversion, runset[runset_num], ".csv")))
+}
+
+dim(set_rslts)
 ```
 
