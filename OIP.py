@@ -781,7 +781,7 @@ def eval_one_case(alt_parameter_cases, disrSizes, disrProbs, OIP_switches, debug
     w_kj = Prob_Yj * (
         dQ_tdq_i_kj - dQ_udq_i_kj
     )  # Weighting factor                                                  (unitless (MM)
-    PrDeltaP_kj = Prob_Yj * DeltaP_kj  # Prob_weighted price Increase ($/BBL)
+    PrDeltaP_kj = Prob_Yj * DeltaP_kj  # XXX Prob_weighted price Increase ($/BBL)
     S_TSPR_kj = S_SPR_j * 365 * L_disr  # SPR Draw Total (MMB) (MMB)
 
     # Diagnostics (Expected Values)
