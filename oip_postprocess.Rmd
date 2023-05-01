@@ -1,0 +1,164 @@
+---
+title: "oip postprocess"
+author: "Paul Leiby"
+date: "4/3/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(here)
+library(readxl)
+```
+
+```{r}
+model_versionyear <- "OIP2022"
+model_subversion <- "v31"
+runset <- paste0("r0", 1:4)
+
+# Warning: following is machine-dependent path
+#. Could use here("..")
+OIP_model_output_path = "/Users/paulleiby/Documents/Papers/2006OilImportPremium/Analysis"
+```
+
+
+```{r}
+runset
+```
+
+```{r}
+AEOyear = "A2022"
+run_years = paste0("YR", c(2023, 2024, 2025, 2026, 2030, 2035, 2040, 2045, 2050 ))
+default_switchstring = "DE1CO1PC1"
+
+runset_num = 3
+case_file_names = paste0(model_versionyear, model_subversion,
+                         runset[runset_num], "_", AEOyear, run_years, 
+                         default_switchstring)
+```
+
+```{r}
+case_file_names
+```
+
+```{r}
+# add caseset case-number extension (N1..Nn) to filename
+#. Unfortunately, this number is particular to the order in
+#. which the cases are run, rather than their content
+for (n in 1:length(case_file_names)) {
+  case_file_names[n] <- paste0(case_file_names[n], "N", n)
+}
+```
+
+
+```{r}
+# test that an expected case is in the set
+case_example = "OIP2022v31r03_A2022YR2023DE1CO1PC1N1"
+
+case_example %in% case_file_names
+```
+
+```{r}
+input_subdirs <- c(paste0(toupper(model_subversion), runset))
+input_subdirs
+
+input_path <- c("input", input_subdirs[runset_num])
+input_path
+```
+
+```{r findingFilesAndDirs}
+list_of_dirs <- list.dirs(here("input"), recursive=FALSE) # list of subdirectories to "input"
+
+list_of_files <- list.files(here("input", input_subdirs[runset_num]), recursive=FALSE) # list of run files in one directory
+list_of_files
+
+"OIP2022v31r03_A2022YR2023DE1CO1PC1SN1.xlsx" %in% list_of_files
+
+```
+
+
+```{r}
+case_num <- 1
+
+
+rslt <- here(
+  paste(input_path, collapse = "/"),
+  paste0(case_file_names[case_num], "SN", case_num, ".xlsx")
+  ) %>%
+  read_excel()
+
+class(rslt)
+
+```
+
+```{r}
+read_one_excel_case <- function(ncase, nset) {
+  case_file_name = paste0(
+    model_versionyear, 
+    model_subversion, 
+    runset[nset], "_", 
+    AEOyear, 
+    run_years[ncase], 
+    default_switchstring
+    )
+  rslt <- here(
+      paste(input_path, collapse = "/"),
+      paste0(case_file_name, "SN", ncase, ".xlsx")
+    ) %>%
+    read_excel(range = "B11:AA39") %>%
+    rename(Year = `Year/Index`) %>% # clean up
+    select(Year, Variable, starts_with("pi_")) %>% # keep pi components
+    filter(!is.na(Year) & Year != 0) # drop some stats not needed or complete
+
+}
+```
+
+
+
+```{r}
+extract_basic_rslts <- function(raw_rstl) {
+  rsltx <- rslt[10:38,2:27]
+  names(rsltx) <- rsltx[1,]
+  rsltx <- rsltx[2:nrow(rsltx),]
+  rsltx <- rsltx %>%
+    rename(Year = `Year/Index`) %>%
+    select(Year, Variable, starts_with("pi_")) %>%
+    filter(!is.na(Year) & Year != 0)
+}
+
+```
+
+```{r}
+runset_num = 3
+case_num = 1
+
+rslt <- read_one_excel_case(case_num, runset_num)
+
+for (case_num in 1:9) {
+  
+  cat("reading case_set", runset_num, " case", case_num, "\n")
+  rslt <- read_one_excel_case(case_num, runset_num)
+
+  #  extract_basic_rslts() -> rslt
+  if (case_num == 1) {
+    rslts <- rslt
+  } else {
+    rslts <- bind_rows(rslts, rslt)
+  }
+}
+
+# excel_sheets(xlsx_example)
+# read_excel(xlsx_example, range = "C1:E4")
+# read_excel(xlsx_example, range = "mtcars!B1:D5")
+```
+
+```{r}
+
+dim(rslts)
+
+```
+
