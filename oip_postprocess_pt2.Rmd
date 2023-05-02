@@ -5,8 +5,9 @@ date: "2023-05-02"
 output: html_document
 ---
 
+
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 ```
 
 ----------------------------------------------------------------------
@@ -63,7 +64,7 @@ runset_labels <- tribble(
 )
 
 runset_assumptions <- tribble(
-  ~Case, ~"SR Oil Price Elasticity of demand", ~"Elasticity of GDP to Oil Price",  ~"SR Conventional Oil Supply elasticity", ~"OPEC Oil Price Elasticity of Supply", ~"SRn Shale Oil Supply Price Elasticity",
+  ~Case, ~"SR Oil Price Elas of demand", ~"Elas of GDP to Oil Price",  ~"SR Conventional Oil Supply elas", ~"OPEC Oil Price Elas of Supply", ~"SR Shale Oil Supply Price Elas",
   1, -0.07 ,  -0.021,   0.06,   "ORNL assumption",  "Not applicable (Base=Conventional)",
   2, -0.07 ,  -0.021,   0.06,   "ORNL assumption",  "0.12 (higher)",
   3, -0.175,  -0.018,   0.06,   "ORNL assumption",  "Not applicable (Base=Conventional)",
@@ -96,10 +97,12 @@ results_wanted <- c("Mean", "90% Confidence Interval") # For Disruption Premium 
 
 Get historical and projected GDP Deflator from AEO
 
-```{r}
-AEO2023_data <- read_excel(here::here(AEOData_path, AEOData_filename), 
-                                      sheet = AEOData_sheetnames[2], # col_types = "text",
-                         skip = 12)
+```{r warning=FALSE, message=FALSE}
+suppressMessages(
+  AEO2023_data <- read_excel(here::here(AEOData_path, AEOData_filename), 
+                                        sheet = AEOData_sheetnames[2], # col_types = "text",
+                           skip = 12)
+)
 
 AEO2023_data <- AEO2023_data %>% select(-c(2,3,4,5, `2022–2050`)) %>% 
   janitor::remove_empty(which = c("cols", "rows"))
@@ -114,25 +117,43 @@ AEO2023_data <- AEO2023_data %>%
 AEO2023_data %>%
   glimpse()
 
-GDPdeflator_2012 <- AEO2023_data %>%
-  filter(Indicators %in% c("GDP Chain-type Price Index (2012=1.000)")) %>% 
-  unique() %>% # In case more than one row of this name
-  t() %>% 
-  data.frame()
-GDPdeflator_2012$Year = rownames(GDPdeflator_2012)
-names(GDPdeflator_2012) <- c("deflator2012", "Year")
+key_AEOData_series <- c(
+  "GDP Chain-type Price Index (2012=1.000)",
+  "Real Gross Domestic Product",
+  "Brent Spot",
+  # "United States (50 states)", # problem is that there are 3 series with ""United States (50 states)" label
+  "U.S. Tight Oil Supply (Table 14)",
+  "Total Liquids Consumption",
+  "OPEC Liquids Market Share (percent)"
+)
 
-GDPdeflator_2012 <- GDPdeflator_2012 %>% 
+key_AEO2023_data <- AEO2023_data %>%
+  filter(Indicators %in% key_AEOData_series) %>% 
+  unique() %>%
+  pivot_longer(cols = -Indicators) %>% # this is essentially a transform
+  rename(Year = name) %>% 
+  pivot_wider(names_from = Indicators, values_from = value) %>%
+  rename(
+    deflator2012 = `GDP Chain-type Price Index (2012=1.000)`,
+    US_Real_GDP = `Real Gross Domestic Product`,
+    Brent_Spot = `Brent Spot`,
+    US_Tight_Oil_Supply = `U.S. Tight Oil Supply (Table 14)`,
+    Total_Liquids_Consumption = `Total Liquids Consumption`,
+    OPEC_Supply_Share = `OPEC Liquids Market Share (percent)`
+  )
+
+
+key_AEO2023_data <- key_AEO2023_data %>% unnest_wider(Brent_Spot) %>% # necessary because there are both real and nominal Brent Spot
+  rename(
+    Brent_Spot_real = `...1`,
+    Brent_Spot_nom = `...2`
+  )
+
+
+GDPdeflator_2012 <- key_AEO2023_data %>%
+  select(Year, deflator2012) %>%
   mutate(across(.cols = everything(), as.numeric)) %>%
-  janitor::remove_empty("rows") # %>%
-  # as.tibble()
-
-
-GDPdeflator_2012
-
-# GDPdeflator_2012 %>% 
-#   filter(Year == 2016) %>% 
-#   select(deflator2012)
+  janitor::remove_empty("rows") 
 ```
 
 
@@ -165,7 +186,6 @@ GDP_deflator_2012_FRED <-  # (implicit price deflator), Index 2012=1.0, FRED, An
     1.1837 
   ))
 GDP_deflator_2012_FRED$Year = 2000:2021
-GDP_deflator_2012_FRED
 ```
 
 
@@ -187,17 +207,18 @@ GDPdeflator_2012
 ```{r}
 convert_year_dollars <- function(fromyear, toyear) {
   # return multiplier to convert real dollar values in `fromyear` dollars to `toyear` dollars
-  multiplier2003to2021 <- (GDPdeflator_2012$deflator[GDPdeflator_2012$Year == toyear]) / (GDPdeflator_2012$deflator[GDPdeflator_2012$Year == fromyear])
-  multiplier2003to2021
+  multiplier <- (GDPdeflator_2012$deflator2012[GDPdeflator_2012$Year == toyear]) / (GDPdeflator_2012$deflator2012[GDPdeflator_2012$Year == fromyear])
+  multiplier
 }
 
 # factor to convert from $2003 to $2021
-convert_year_dollars(2003, 2021)
+multiplier2003to2021 <- convert_year_dollars(2003, 2021)
 ```
 
-Read in the Results from Prior OIP Cases and Produce Tables and Graphs
+## Read in the Results from Prior OIP Cases and Produce Tables and Graphs
 
-Note that the financial values (\$/bbl premia) in these files are all in 2003\$.
+Note that the financial values (\$/bbl premia) in these saved
+OIP case result files are all in 2003\$.
 
 
 ```{r}
@@ -212,12 +233,14 @@ all_rslts %>% count(model_subversion, runset_num)
 
 
 Extract Key Statistics (Mean and CI bounds) for the Disruption Premium Components, 
-and convert to 2021 Dollars
+and convert to Base Year Dollars
 
 ```{r create_disr_prems_df}
 stats_wanted <- c("Mean", "5th Percentile", "95th Percentile")
 # series_wanted <- c(Variable, Year, pi_d_opt)
-multiplier2003to2021 <- convert_year_dollars(2003, 2021)
+
+year_dollar = 2022
+multiplier2003toBaseyear_dollar <- convert_year_dollars(2003, year_dollar)
 
 disr_prems <- all_rslts %>% 
   select(Variable, Year, pi_d_Opt, model_versionyear, model_subversion, runset_num) %>% # focus on only total disruption premium
@@ -226,8 +249,8 @@ disr_prems <- all_rslts %>%
   mutate(
     Case = as.factor(Case),
     AEOyear = str_remove(model_versionyear, "OIP"),
-    # Convert the Disruption Premiums from 2003 Dollars to 2021 Dollars
-    pi_d_Opt = pi_d_Opt *   multiplier2003to2021
+    # Convert the Disruption Premiums from 2003 Dollars to specified Base year Dollars
+    pi_d_Opt = pi_d_Opt * multiplier2003toBaseyear_dollar
   )
 
 ```
@@ -250,6 +273,8 @@ model_version_wanted <- "v32"
 AEOyear_wanted <- "2023"
 
 disr_prems %>% 
+  left_join(mutate(runset_labels_short, Case = as.character(Case)), by = "Case") %>% 
+  unite(Case, c(Case, Label), sep = ": ") %>% 
   filter(Variable == "Mean") %>% 
   filter(
     model_subversion == model_version_wanted,
@@ -258,18 +283,17 @@ disr_prems %>%
   group_by(Case) %>% 
   ggplot(aes(x = Year, y = pi_d_Opt, group = Case,
              color = Case)) + geom_line() + geom_point(size = 3) +
-  ylab("$/bbb (2021$)") +
+  ylab(paste0("$/bbl (", year_dollar, "$)")) +
   ggtitle(paste0("Oil Disruption Premium, AEO", AEOyear_wanted, ", Model version ", model_version_wanted))
 ```
 
 
-## Disruption Premium Results As a Table, For Both Year AEOs (2021$)
+## Disruption Premium Results, For Both Year AEOs (`r year_dollar` $)
 
 ```{r}
-mutate(runset_labels_short, Case = as.factor(Case))
-
 disr_prems %>%
-  left_join(mutate(runset_labels_short, Case = as.factor(Case)), by = "Case") %>% 
+  left_join(mutate(runset_labels_short, Case = as.character(Case)), by = "Case") %>% 
+  unite(Case, c(Case, Label), sep = ": ") %>% 
   filter(
     # model_subversion == model_version_wanted,
     # AEOyear == AEOyear_wanted
@@ -283,18 +307,21 @@ disr_prems %>%
               # id_cols = c(model_versionyear, model_subversions, AEOyear, Case),
               names_from = Year) %>%
   select(-c(model_versionyear, model_subversion)) %>% 
-  kable(caption = "Mean Disruption Premium, 2021$ (4 Cases, 2 AEOs)")
+  kable(caption = paste0("Mean Disruption Premium, ", year_dollar, "$ (4 Cases, 2 AEOs)"))
 
 ```
 
 
-## Disruption Premium Results As a Table, For Both Year AEOs (2022$)
+## Disruption Premium Results As a Table, For Both Year AEOs (2021$)
+
+As a check, the values below match those presented last year for AEO2022/IEO2021 cases.
 
 ```{r}
-multiplier2021to2022 <- convert_year_dollars(2021, 2022)
+multiplier2022to2021 <- convert_year_dollars(2022, 2021)
 
 disr_prems %>%
-  left_join(mutate(runset_labels_short, Case = as.factor(Case)), by = "Case") %>% 
+  left_join(mutate(runset_labels_short, Case = as.character(Case)), by = "Case") %>% 
+  unite(Case, c(Case, Label), sep = ": ") %>% 
   filter(
     # model_subversion == model_version_wanted,
     # AEOyear == AEOyear_wanted
@@ -302,13 +329,13 @@ disr_prems %>%
     ) %>% 
   select(-Variable) %>% 
   mutate(
-    pi_d_Opt = round(pi_d_Opt * multiplier2021to2022, 2)
+    pi_d_Opt = round(pi_d_Opt * multiplier2022to2021, 2)
   ) %>% 
   pivot_wider(values_from = pi_d_Opt, 
               # id_cols = c(model_versionyear, model_subversions, AEOyear, Case),
               names_from = Year) %>%
   select(-c(model_versionyear, model_subversion)) %>% 
-  kable(caption = "Mean Disruption Premium, 2022$ (4 Cases, 2 AEOs)")
+  kable(caption = "Mean Disruption Premium, 2021$ (4 Cases, 2 AEOs)")
 
 ```
 
@@ -316,19 +343,48 @@ disr_prems %>%
 
 ```{r}
 disr_prems %>% 
+  left_join(mutate(runset_labels_short, Case = as.character(Case)), by = "Case") %>% 
+  unite(Case, c(Case, Label), sep = ": ") %>% 
   # filter(
   #   model_subversion == model_version_wanted,
   #   AEOyear == AEOyear_wanted
   # ) %>%
   select(-c(model_subversion, model_versionyear)) %>% 
-  filter(Variable == "Mean") -> temp
-
-temp %>% 
+  filter(Variable == "Mean") %>% 
   group_by(Case) %>% 
   ggplot(aes(x = Year, y = pi_d_Opt, group = interaction(Case, AEOyear),
              color = Case, shape = AEOyear)) + geom_line() + geom_point(size = 3) +
-  ylab("$/bbb (2021$") +
+        ylab(paste0("$/bbl (", year_dollar, "$)")) +
+        ggtitle(paste0("Oil Disruption Premium, AEO", AEOyear_wanted, ", Model version ", model_version_wanted))
+```
+
+## Look at Results for AEO2023, with Confidence Bands
+
+The 90% Confidence Interval (CI) bounds are fairly wide.
+
+```{r plotOneModelVersionWithCI}
+model_version_wanted <- "v32"
+AEOyear_wanted <- "2023"
+
+disr_prems %>% 
+  left_join(mutate(runset_labels_short, Case = as.character(Case)), by = "Case") %>% 
+  unite(Case, c(Case, Label), sep = ": ") %>% 
+  # filter(Variable == "Mean") %>% 
+  filter(
+    model_subversion == model_version_wanted,
+    AEOyear == AEOyear_wanted
+  ) %>%
+  pivot_wider(names_from = Variable, values_from = pi_d_Opt)  %>% 
+  group_by(Case) %>% 
+  ggplot(aes(x = Year, y = Mean, 
+             ymin = `5th Percentile`, ymax = `95th Percentile`, fill = Case, 
+             group = Case,
+             color = Case)
+         ) + 
+        geom_line(size = 2) + 
+        geom_point(size = 3) +
+        geom_ribbon(alpha = 0.3) + 
+        ylab(paste0("$/bbl (", year_dollar, "$)")) +
   ggtitle(paste0("Oil Disruption Premium, AEO", AEOyear_wanted, ", Model version ", model_version_wanted))
 ```
 
-## Look at Results for One AEO Year, with Confidence Bands
