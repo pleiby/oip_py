@@ -43,6 +43,8 @@ output_subpath <- "Output" # destination for any output
 AEOData_path <- "../../Data/AEO2023"
 AEOData_filename <- "AEO2023_yearbyyear_Reference(PLrevision_with_checks_20230428).xlsx"
 AEOData_sheetnames <- c("AEO2022ref_out", "AEO2023ref_out")
+
+save_results_to_files <- TRUE
 ```
 
 #### Specify set of OIP Runs to be Processed
@@ -50,7 +52,6 @@ AEOData_sheetnames <- c("AEO2022ref_out", "AEO2023ref_out")
 ```{r echo = T}
 model_versionyears <- c("OIP2022", "OIP2023")
 model_subversions <- c("v31", "v32") # each goes with the corresponding model_versionyear
-
 ```
 
 ### Execution Section
@@ -201,13 +202,15 @@ GDPdeflator_2012 <- key_AEO2023_data %>%
 
 
 ```{r defFn_plot_AEO_series_comparison}
-plot_AEO_series_comparison <- function(series_wanted) {
+plot_AEO_series_comparison <- function(series_wanted, yunits = "value") {
   key_AEO_data %>% 
     filter(name == series_wanted) %>% 
+    mutate(Year = as.numeric(Year)) %>% 
     ggplot(aes(x = Year, y = value, color = AEOyear, shape = AEOyear)) +
       geom_line() +
       geom_point(size = 3) +
-    ggtitle(paste0("Comparison of AEO Data for ", series_wanted))
+    ggtitle(paste0("Comparison of AEO Data for ", series_wanted)) +
+    ylab(yunits)
 }
 ```
 
@@ -304,24 +307,26 @@ key_AEO_data <- key_AEO_data %>%
 
 ```{r fig.width=7, fig.height=4}
 series_wanted <- "US_Real_GDP"
-plot_AEO_series_comparison(series_wanted)
+yunits <- paste0("Billion $/yr (", year_dollar, "$)")
+plot_AEO_series_comparison(series_wanted, yunits = yunits)
 ```
 
 ```{r fig.width=7, fig.height=4}
 series_wanted <- "US_Tight_Oil_Supply"
-plot_AEO_series_comparison(series_wanted)
+plot_AEO_series_comparison(series_wanted, yunits = "MMBD")
 ```
 
 ```{r fig.width=7, fig.height=4}
 series_wanted <- "Brent_Spot"
-plot_AEO_series_comparison(series_wanted)
+yunits <- paste0("$/bbl (", year_dollar, "$)")
+plot_AEO_series_comparison(series_wanted, yunits)
 ```
 
 
 
 ```{r fig.width=7, fig.height=4}
 series_wanted <- "OPEC_Supply_Share"
-plot_AEO_series_comparison(series_wanted)
+plot_AEO_series_comparison(series_wanted, yunits = "Percent of World")
 ```
 
 ## Read in the Results from Prior OIP Cases and Produce Tables and Graphs
@@ -510,6 +515,10 @@ disr_prems_out <- disr_prems %>%
 round_to_2digits <- function(x) {round(x, 2)}
 
 disr_prems_out %>% 
+  unite(Case, c(Case, Label), sep = ": ") %>% 
+  mutate(
+    Variable = str_replace_all(Variable, "th Percentile", "th %ile")
+  ) %>% 
   mutate(across(`2023`:`2050`, round_to_2digits)) %>% 
   select(-model_versionyear, -model_subversion) %>% 
   kable(caption = "Table R3: Disruption Premium Mean and CIs, 2022$ (4 Cases, 2 AEOs)")
@@ -517,10 +526,12 @@ disr_prems_out %>%
 
 
 ```{r saveDisruptionPremiumResultData}
-disr_prems_out %>% 
-  write_csv(file = here(output_subpath, "OIP_Disruption_Premiums_20230502.csv"))
-
-disr_prems_out %>% 
-  write_xlsx(path = here(output_subpath, "OIP_Disruption_Premiums_20230502.xlsx"))
+if (save_results_to_files) {
+  disr_prems_out %>% 
+    write_csv(file = here(output_subpath, "OIP_Disruption_Premiums_20230502.csv"))
+  
+  disr_prems_out %>% 
+    write_xlsx(path = here(output_subpath, "OIP_Disruption_Premiums_20230502.xlsx"))
+}
 ```
 
