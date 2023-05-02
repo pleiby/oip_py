@@ -1,6 +1,6 @@
 ---
-title: "oip postprocess"
-author: "Paul Leiby"
+title: "OIP Postprocess Part 1"
+author: "Paul Leiby and Rocio Uria"
 date: "5/1/2023"
 output: html_document
 ---
@@ -368,15 +368,4 @@ if (save_results_to_CSV) {
 }
 ```
 
-----------------------------------------------------------------------
-
-### Part II. After Gathering Results, Produce Summary Tables and Graphs
-
-```{r}
-glimpse(all_rslts)
-```
-
-```{r}
-all_rslts %>% count(model_subversion, runset_num)
-```
-
+### Next Step: Run `oip_postprocess_pt2.Rmd`
