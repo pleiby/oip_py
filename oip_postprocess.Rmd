@@ -251,34 +251,40 @@ process_one_found_set_of_cases <- function(mod_versionyear, mod_subversion, runs
       ", `sub_version` ", mod_subversion, ", ", length(list_of_rslt_files), " cases:"))
   rslts = tibble() # initialize results df
   
-  for (case_file_name in list_of_rslt_files) { # assume 9 cases (years) per set. 
-    
-    case_ffname <- str_remove(case_file_name, ".xlsx") # strip the file extension to just get file firstname
-    print(paste0("  reading case_set ", runset_n, " case ", case_ffname))
+  if (length(list_of_rslt_files) > 0) {
+    for (case_file_name in list_of_rslt_files) { # assume 9 cases (years) per set. 
+      
+      case_ffname <- str_remove(case_file_name, ".xlsx") # strip the file extension to just get file firstname
+      print(paste0("  reading case_set ", runset_n, " case ", case_ffname))
+  
+      rslt <- read_one_excel_case(case_ffname, input_path_compons)
+      
+      if (is.null(rslt)) {
+        print(paste0("    Error or file not found for case ", case_ffname))
+      } else { # non-NULL return from file read
+        #  extract_basic_rslts() -> rslt
+        rslt <- rslt %>%
+          mutate(
+            run_num = NA,
+            case_file_firstname = case_ffname
+          )
 
-    rslt <- read_one_excel_case(case_ffname, input_path_compons)
-    
-    if (is.null(rslt)) {
-      print(paste0("    Error or file not found for case ", case_ffname))
-    } else { # non-NULL return from file read
-      #  extract_basic_rslts() -> rslt
-      if (nrow(rslts) == 0) { # first non-NULL result, initialize df format
-        rslts <- rslt
-      } else { # concatenate rows (expecting consistent columns)
-        rslts <- bind_rows(rslts, rslt)
+        if (nrow(rslts) == 0) { # first non-NULL result, initialize df format
+          rslts <- rslt
+        } else { # concatenate rows (expecting consistent columns)
+          rslts <- bind_rows(rslts, rslt)
+        }
       }
     }
-  }
-  
-  rslts <- rslts %>%
-    mutate(
-      model_versionyear = mod_versionyear,
-      model_subversion = mod_subversion,
-      runset_num = runset_n,
-      run_num = NA,
-      case_file_firstname = case_ffname
-    )
-    rslts
+    
+    rslts <- rslts %>%
+      mutate( # these attribute apply to all result cases in this set
+        model_versionyear = mod_versionyear,
+        model_subversion = mod_subversion,
+        runset_num = runset_n
+      )
+  } # if length(list_of_rslt_files) > 0
+  rslts
 }
 ```
 
@@ -321,7 +327,7 @@ dim(set_rslts)
 Read Multiple Sets of Cases, Taking and Result Files Found, and Store in CSV files
 
 ```{r grandLoopOverModelsAndCases}
-set_rslts = list()
+set_rslts_ls = list()
 
 for (i in 1:2) { # could actually find the subdirectories, but whatever
   model_versionyear <- model_versionyears[i]
@@ -331,10 +337,10 @@ for (i in 1:2) { # could actually find the subdirectories, but whatever
   
     listkey <- paste0(model_versionyear, model_subversion, "r0", runset_num )
     
-    set_rslts[[listkey]] <- process_one_found_set_of_cases(model_versionyear, model_subversion, runset_num)
+    set_rslts_ls[[listkey]] <- process_one_found_set_of_cases(model_versionyear, model_subversion, runset_num)
   
     if (save_results_to_CSV) {
-      write_csv(set_rslts[[listkey]], 
+      write_csv(set_rslts_ls[[listkey]], 
                 here(output_subpath, paste0(model_versionyear, model_subversion, runset[runset_num], ".csv")))
     }
   } # for runset_num
@@ -343,8 +349,8 @@ for (i in 1:2) { # could actually find the subdirectories, but whatever
 ```
 
 ```{r}
-all_rslts <- bind_rows(set_rslts)
-
+# collapse list of dfs to one df
+all_rslts <- bind_rows(set_rslts_ls) # shoule work even if some rslts df are empty
 ```
 
 
@@ -355,5 +361,18 @@ if (save_results_to_CSV) {
             here(output_subpath, paste0("all_rslts", ".csv")))
 }
 
+```
+
+----------------------------------------------------------------------
+
+### Part II. After Gathering Results, Produce Summary Tables and Graphs
+
+```{r}
+glimpse(all_rslts)
+
+```
+
+```{r}
+all_rslts %>% count(model_subversion, runset_num)
 ```
 
