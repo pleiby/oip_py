@@ -2,13 +2,17 @@
 title: "OIP Postprocess Part 2"
 author: "Paul Leiby and Rocio Uria"
 date: "2023-05-02"
-output: html_document
+output:
+  word_document: default
+  html_document: default
 ---
 
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 ```
+
+# **DRAFT**
 
 ----------------------------------------------------------------------
 
@@ -19,10 +23,10 @@ simulation cases have been compiled into one CSV file and saved,
 by previously running `oil_postprocess.Rmd`.
 
 ```{r}
-library(tidyverse)
+suppressPackageStartupMessages(library(tidyverse))
 library(here) # to locate files and directories in project
 library(readxl) # for read_excel, reading Excel workbooks
-library(knitr) # for kable
+suppressPackageStartupMessages(library(knitr)) # for kable
 ```
 
 ## Data Section
@@ -42,9 +46,10 @@ AEOData_sheetnames <- c("AEO2022ref_out", "AEO2023ref_out")
 
 #### Specify set of OIP Runs to be Processed
 
-```{r}
+```{r echo = T}
 model_versionyears <- c("OIP2022", "OIP2023")
 model_subversions <- c("v31", "v32") # each goes with the corresponding model_versionyear
+
 ```
 
 ### Execution Section
@@ -104,7 +109,7 @@ suppressMessages(
                            skip = 12)
 )
 
-AEO2023_data <- AEO2023_data %>% select(-c(2,3,4,5, `2022–2050`)) %>% 
+AEO2023_data <- AEO2023_data %>% select(-c(2,3,4,5, ncol(AEO2023_data))) %>% # Last col badly named (non ASCII char)
   janitor::remove_empty(which = c("cols", "rows"))
 
 AEO2023_data <- AEO2023_data %>%
@@ -114,8 +119,7 @@ AEO2023_data <- AEO2023_data %>%
   ) %>% 
   mutate(across(.cols = `2016`:`2050`, as.numeric))
 
-AEO2023_data %>%
-  glimpse()
+# AEO2023_data %>% glimpse()
 
 key_AEOData_series <- c(
   "GDP Chain-type Price Index (2012=1.000)",
@@ -129,7 +133,12 @@ key_AEOData_series <- c(
 
 key_AEO2023_data <- AEO2023_data %>%
   filter(Indicators %in% key_AEOData_series) %>% 
-  unique() %>%
+  unique() #
+
+# WARNING: ToDo: Need better/safer way to drop 2nd row of Brent Spot
+key_AEO2023_data <- key_AEO2023_data[-4, ] 
+
+key_AEO2023_data <- key_AEO2023_data %>%
   pivot_longer(cols = -Indicators) %>% # this is essentially a transform
   rename(Year = name) %>% 
   pivot_wider(names_from = Indicators, values_from = value) %>%
@@ -142,12 +151,12 @@ key_AEO2023_data <- AEO2023_data %>%
     OPEC_Supply_Share = `OPEC Liquids Market Share (percent)`
   )
 
-
-key_AEO2023_data <- key_AEO2023_data %>% unnest_wider(Brent_Spot) %>% # necessary because there are both real and nominal Brent Spot
-  rename(
-    Brent_Spot_real = `...1`,
-    Brent_Spot_nom = `...2`
-  )
+# necessary because there are both real and # nominal Brent Spot (works on Mac, Errs on Windows)
+# key_AEO2023_data <- key_AEO2023_data %>% unnest_wider(Brent_Spot) %>%
+#   rename(
+#     Brent_Spot_real = `...1`,
+#     Brent_Spot_nom = `...2`
+#   )
 
 
 GDPdeflator_2012 <- key_AEO2023_data %>%
@@ -201,7 +210,9 @@ GDPdeflator_2012 <- GDPdeflator_2012 %>%
   ) %>%
   select(-deflator2012FRED)
 
-GDPdeflator_2012
+GDPdeflator_2012 %>%
+  filter(Year <= 2025) %>% 
+  kable(caption = "Table D1: US GDP Deflator (from AEO and FRED")
 ```
 
 ```{r}
@@ -221,14 +232,17 @@ Note that the financial values (\$/bbl premia) in these saved
 OIP case result files are all in 2003\$.
 
 
-```{r}
+```{r message = F}
 all_rslts <- read_csv(here(output_subpath, input_filename))
 glimpse(all_rslts)
 ```
 
+Summarize the Observed Variables Read, by Model and Case
 
 ```{r}
-all_rslts %>% count(model_subversion, runset_num)
+all_rslts %>% 
+  rename(Case = runset_num) %>% 
+  count(model_subversion, Case)
 ```
 
 
@@ -259,16 +273,16 @@ disr_prems <- all_rslts %>%
 
 ```{r}
 runset_labels %>% 
-  kable(caption = "Set of Cases Considered for Each AEO (2022 and 2023)")
+  kable(caption = "Table D2: Set of Cases Considered for Each AEO (2022 and 2023)")
 ```
 ```{r}
 runset_assumptions %>% 
-  kable(caption = "Table of Assumptions for Cases")
+  kable(caption = "Table D3: Assumptions for Cases")
 ```
 
 ## Plot the Results For AEO2023/IEO 2021 Cases
 
-```{r plotOneModelVersion}
+```{r plotOneModelVersion, fig.width=7, fig.height=4}
 model_version_wanted <- "v32"
 AEOyear_wanted <- "2023"
 
@@ -307,7 +321,7 @@ disr_prems %>%
               # id_cols = c(model_versionyear, model_subversions, AEOyear, Case),
               names_from = Year) %>%
   select(-c(model_versionyear, model_subversion)) %>% 
-  kable(caption = paste0("Mean Disruption Premium, ", year_dollar, "$ (4 Cases, 2 AEOs)"))
+  kable(caption = paste0("Table R1: Mean Disruption Premium, ", year_dollar, "$ (4 Cases, 2 AEOs)"))
 
 ```
 
@@ -335,13 +349,13 @@ disr_prems %>%
               # id_cols = c(model_versionyear, model_subversions, AEOyear, Case),
               names_from = Year) %>%
   select(-c(model_versionyear, model_subversion)) %>% 
-  kable(caption = "Mean Disruption Premium, 2021$ (4 Cases, 2 AEOs)")
+  kable(caption = "Table R2: Mean Disruption Premium, 2021$ (4 Cases, 2 AEOs)")
 
 ```
 
 ## Plot 2 Sets of Cases Across AEO Years for Comparison
 
-```{r}
+```{r plot2SetsOfPrems, fig.width=7, fig.height=4}
 disr_prems %>% 
   left_join(mutate(runset_labels_short, Case = as.character(Case)), by = "Case") %>% 
   unite(Case, c(Case, Label), sep = ": ") %>% 
@@ -362,7 +376,7 @@ disr_prems %>%
 
 The 90% Confidence Interval (CI) bounds are fairly wide.
 
-```{r plotOneModelVersionWithCI}
+```{r plotOneModelVersionWithCI, fig.width=7, fig.height=4}
 model_version_wanted <- "v32"
 AEOyear_wanted <- "2023"
 
@@ -381,7 +395,7 @@ disr_prems %>%
              group = Case,
              color = Case)
          ) + 
-        geom_line(size = 2) + 
+        geom_line(linewidth = 2) + 
         geom_point(size = 3) +
         geom_ribbon(alpha = 0.3) + 
         ylab(paste0("$/bbl (", year_dollar, "$)")) +
