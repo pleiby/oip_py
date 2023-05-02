@@ -22,12 +22,15 @@ Can be run (from restart or cleared environment) after various sets of OIP
 simulation cases have been compiled into one CSV file and saved,
 by previously running `oil_postprocess.Rmd`.
 
-```{r}
+```{r message=F}
 suppressPackageStartupMessages(library(tidyverse))
 library(here) # to locate files and directories in project
 library(readxl) # for read_excel, reading Excel workbooks
 library(writexl)
+
 suppressPackageStartupMessages(library(knitr)) # for kable
+# library(kableExtra)
+library(flextable) # for more flexibly formatted tables
 ```
 
 ## Data Section
@@ -44,7 +47,7 @@ AEOData_path <- "../../Data/AEO2023"
 AEOData_filename <- "AEO2023_yearbyyear_Reference(PLrevision_with_checks_20230428).xlsx"
 AEOData_sheetnames <- c("AEO2022ref_out", "AEO2023ref_out")
 
-save_results_to_files <- TRUE
+save_results_to_files <- F # TRUE
 ```
 
 #### Specify set of OIP Runs to be Processed
@@ -214,6 +217,41 @@ plot_AEO_series_comparison <- function(series_wanted, yunits = "value") {
 }
 ```
 
+```{r defFn_my_regulartable}
+my_regulartable <- function(df, caption = "Table", compact = F) {
+  # function for standardized, reasonably-formatted tables
+  if (compact) {
+    my_compact_regulartable(df, caption = caption)
+  } else {
+    df %>% 
+      regulartable() %>% # requires `flextable` package
+      autofit() %>%
+      set_caption(caption = caption) %>%
+      theme_vanilla() %>%
+      fit_to_width(max_width = 7) # max width in inches
+  }
+    # add_footer_lines(ft, "Footer")
+    # color(ft, part = "footer", color = "#666666")
+   # See: https://ardata-fr.github.io/flextable-book/  Intro
+}
+
+my_compact_regulartable <- function(df, caption = "Table") {
+  # function for standardized, reasonably-formatted tables
+  df %>% 
+    regulartable() %>% # requires `flextable` package
+    autofit() %>%
+    set_caption(caption = caption) %>%
+    fit_to_width(max_width = 7) # max width in inches
+    # add_footer_lines(ft, "Footer")
+    # color(ft, part = "footer", color = "#666666")
+    # See: https://ardata-fr.github.io/flextable-book/  Intro
+    # set_flextable_defaults(
+    #   font.size = 10, theme_fun = theme_vanilla,
+    #   padding = 6,
+    #   background.color = "#EFEFEF")
+}
+```
+
 
 Supplement Historical GDP Deflator with Early Year Values from FRED
 
@@ -260,8 +298,9 @@ GDPdeflator_2012 <- GDPdeflator_2012 %>%
   select(-deflator2012FRED)
 
 GDPdeflator_2012 %>%
-  filter(Year <= 2025) %>% 
-  kable(caption = "Table D1: US GDP Deflator (from AEO and FRED")
+  filter(Year <= 2023) %>% 
+  mutate(Year = as.character(Year)) %>% 
+  my_regulartable(caption = "Table D1: US GDP Deflator (from AEO and FRED", compact = T)
 ```
 
 ```{r}
@@ -337,7 +376,7 @@ OIP case result files are all in 2003\$.
 
 ```{r message = F}
 all_rslts <- read_csv(here(output_subpath, input_filename))
-glimpse(all_rslts)
+# glimpse(all_rslts)
 ```
 
 Summarize the Observed Variables Read, by Model and Case
@@ -345,7 +384,8 @@ Summarize the Observed Variables Read, by Model and Case
 ```{r}
 all_rslts %>% 
   rename(Case = runset_num) %>% 
-  count(model_subversion, Case)
+  count(model_subversion, Case) %>%
+  my_regulartable(caption = "Table: Observed Run Variables by Case and Model Version/AEO", compact = T)
 ```
 
 
@@ -373,11 +413,12 @@ disr_prems <- all_rslts %>%
 
 ```{r}
 runset_labels %>% 
-  kable(caption = "Table D2: Set of Cases Considered for Each AEO (2022 and 2023)")
+  my_regulartable(caption = "Table D2: Set of Cases Considered for Each AEO (2022 and 2023)")
 ```
+
 ```{r}
 runset_assumptions %>% 
-  kable(caption = "Table D3: Assumptions for Cases")
+  my_regulartable(caption = "Table D3: Assumptions for Cases")
 ```
 
 ## Plot the Results For AEO2023/IEO 2021 Cases
@@ -421,7 +462,7 @@ disr_prems %>%
               # id_cols = c(model_versionyear, model_subversions, AEOyear, Case),
               names_from = Year) %>%
   select(-c(model_versionyear, model_subversion)) %>% 
-  kable(caption = paste0("Table R1: Mean Disruption Premium, ", year_dollar, "$ (4 Cases, 2 AEOs)"))
+  my_regulartable(caption = paste0("Table R1: Mean Disruption Premium, ", year_dollar, "$ (4 Cases, 2 AEOs)"))
 
 ```
 
@@ -449,7 +490,7 @@ disr_prems %>%
               # id_cols = c(model_versionyear, model_subversions, AEOyear, Case),
               names_from = Year) %>%
   select(-c(model_versionyear, model_subversion)) %>% 
-  kable(caption = "Table R2: Mean Disruption Premium, 2021$ (4 Cases, 2 AEOs)")
+  my_regulartable(caption = "Table R2: Mean Disruption Premium, 2021$ (4 Cases, 2 AEOs)")
 
 ```
 
@@ -521,7 +562,9 @@ disr_prems_out %>%
   ) %>% 
   mutate(across(`2023`:`2050`, round_to_2digits)) %>% 
   select(-model_versionyear, -model_subversion) %>% 
-  kable(caption = "Table R3: Disruption Premium Mean and CIs, 2022$ (4 Cases, 2 AEOs)")
+  my_regulartable(caption = "Table R3: Disruption Premium Mean and CIs, 2022$ (4 Cases, 2 AEOs)") # %>% 
+  # kable_styling(font_size = 7) %>% 
+  # kable_classic_2(full_width = F)
 ```
 
 
