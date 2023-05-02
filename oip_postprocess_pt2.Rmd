@@ -26,6 +26,7 @@ by previously running `oil_postprocess.Rmd`.
 suppressPackageStartupMessages(library(tidyverse))
 library(here) # to locate files and directories in project
 library(readxl) # for read_excel, reading Excel workbooks
+library(writexl)
 suppressPackageStartupMessages(library(knitr)) # for kable
 ```
 
@@ -102,24 +103,40 @@ results_wanted <- c("Mean", "90% Confidence Interval") # For Disruption Premium 
 
 Get historical and projected GDP Deflator from AEO
 
+```{r defFn_read_AEO_data, warning=FALSE, message=FALSE}
+read_AEO_data <- function(data_path, data_filename, AEO_year_num) {
+
+  suppressMessages(
+    AEO_data_read <- read_excel(here::here(data_path, data_filename), 
+                                          sheet = AEOData_sheetnames[AEO_year_num], # col_types = "text",
+                             skip = 12)
+  )
+  
+  AEO_data_read <- AEO_data_read %>% select(-c(2,3,4,5, ncol(AEO_data_read))) %>% # Last col badly named (non ASCII char)
+    janitor::remove_empty(which = c("cols", "rows"))
+  
+  AEO_data_read <- AEO_data_read %>%
+    filter(!if_all(-Indicators, is.na)) %>% # drop rows if blank exceot for Indicators column
+    mutate(
+      Indicators = str_trim(Indicators, side = c("both"))
+    ) %>% 
+    mutate(across(.cols = `2016`:`2050`, as.numeric))
+  AEO_data_read
+}
+```
+
+
 ```{r warning=FALSE, message=FALSE}
-suppressMessages(
-  AEO2023_data <- read_excel(here::here(AEOData_path, AEOData_filename), 
-                                        sheet = AEOData_sheetnames[2], # col_types = "text",
-                           skip = 12)
-)
+AEO2023_data <- read_AEO_data(
+  data_path = AEOData_path, 
+  data_filename = AEOData_filename, 
+  AEO_year_num = 2)
 
-AEO2023_data <- AEO2023_data %>% select(-c(2,3,4,5, ncol(AEO2023_data))) %>% # Last col badly named (non ASCII char)
-  janitor::remove_empty(which = c("cols", "rows"))
-
-AEO2023_data <- AEO2023_data %>%
-  filter(!if_all(-Indicators, is.na)) %>% # drop rows if blank exceot for Indicators column
-  mutate(
-    Indicators = str_trim(Indicators, side = c("both"))
-  ) %>% 
-  mutate(across(.cols = `2016`:`2050`, as.numeric))
-
-# AEO2023_data %>% glimpse()
+AEO2022_data <- read_AEO_data(
+  data_path = AEOData_path, 
+  data_filename = AEOData_filename, 
+  AEO_year_num = 1)
+## AEO2023_data %>% glimpse()
 
 key_AEOData_series <- c(
   "GDP Chain-type Price Index (2012=1.000)",
@@ -130,39 +147,68 @@ key_AEOData_series <- c(
   "Total Liquids Consumption",
   "OPEC Liquids Market Share (percent)"
 )
+```
 
-key_AEO2023_data <- AEO2023_data %>%
-  filter(Indicators %in% key_AEOData_series) %>% 
-  unique() #
 
-# WARNING: ToDo: Need better/safer way to drop 2nd row of Brent Spot
-key_AEO2023_data <- key_AEO2023_data[-4, ] 
+```{r defFn_gather_key_AEO_data, warning=FALSE, message=FALSE}
+gather_key_AEO_data <- function(df, key_series) {
+  key_data <- df %>%
+    filter(Indicators %in% key_series) %>% 
+    unique() #
+  
+  # WARNING: ToDo: Need better/safer way to drop 2nd row of Brent Spot
+  key_data <- key_data[-4, ] 
+  
+  key_data <- key_data %>%
+    pivot_longer(cols = -Indicators) %>% # this is essentially a transform
+    rename(Year = name) %>% 
+    pivot_wider(names_from = Indicators, values_from = value) %>%
+    rename(
+      deflator2012 = `GDP Chain-type Price Index (2012=1.000)`,
+      US_Real_GDP = `Real Gross Domestic Product`,
+      Brent_Spot = `Brent Spot`,
+      US_Tight_Oil_Supply = `U.S. Tight Oil Supply (Table 14)`,
+      Total_Liquids_Consumption = `Total Liquids Consumption`,
+      OPEC_Supply_Share = `OPEC Liquids Market Share (percent)`
+    )
+  
+  # necessary because there are both real and # nominal Brent Spot (works on Mac, Errs on Windows)
+  # key_AEO2023_data <- key_AEO2023_data %>% unnest_wider(Brent_Spot) %>%
+  #   rename(
+  #     Brent_Spot_real = `...1`,
+  #     Brent_Spot_nom = `...2`
+  #   )
 
-key_AEO2023_data <- key_AEO2023_data %>%
-  pivot_longer(cols = -Indicators) %>% # this is essentially a transform
-  rename(Year = name) %>% 
-  pivot_wider(names_from = Indicators, values_from = value) %>%
-  rename(
-    deflator2012 = `GDP Chain-type Price Index (2012=1.000)`,
-    US_Real_GDP = `Real Gross Domestic Product`,
-    Brent_Spot = `Brent Spot`,
-    US_Tight_Oil_Supply = `U.S. Tight Oil Supply (Table 14)`,
-    Total_Liquids_Consumption = `Total Liquids Consumption`,
-    OPEC_Supply_Share = `OPEC Liquids Market Share (percent)`
-  )
+}
+```
 
-# necessary because there are both real and # nominal Brent Spot (works on Mac, Errs on Windows)
-# key_AEO2023_data <- key_AEO2023_data %>% unnest_wider(Brent_Spot) %>%
-#   rename(
-#     Brent_Spot_real = `...1`,
-#     Brent_Spot_nom = `...2`
-#   )
 
+```{r gather_key_AEO_data, warning=FALSE, message=FALSE}
+key_AEO2023_data <- gather_key_AEO_data(df = AEO2023_data, key_AEOData_series) %>% 
+  mutate(AEOyear = "AEO2023")
+key_AEO2022_data <- gather_key_AEO_data(df = AEO2022_data, key_AEOData_series) %>% 
+  mutate(AEOyear = "AEO2022")
+```
+
+
+```{r warning=FALSE, message=FALSE}
 
 GDPdeflator_2012 <- key_AEO2023_data %>%
   select(Year, deflator2012) %>%
   mutate(across(.cols = everything(), as.numeric)) %>%
   janitor::remove_empty("rows") 
+```
+
+
+```{r defFn_plot_AEO_series_comparison}
+plot_AEO_series_comparison <- function(series_wanted) {
+  key_AEO_data %>% 
+    filter(name == series_wanted) %>% 
+    ggplot(aes(x = Year, y = value, color = AEOyear, shape = AEOyear)) +
+      geom_line() +
+      geom_point(size = 3) +
+    ggtitle(paste0("Comparison of AEO Data for ", series_wanted))
+}
 ```
 
 
@@ -221,9 +267,61 @@ convert_year_dollars <- function(fromyear, toyear) {
   multiplier <- (GDPdeflator_2012$deflator2012[GDPdeflator_2012$Year == toyear]) / (GDPdeflator_2012$deflator2012[GDPdeflator_2012$Year == fromyear])
   multiplier
 }
+```
 
-# factor to convert from $2003 to $2021
-multiplier2003to2021 <- convert_year_dollars(2003, 2021)
+
+```{r}
+# Establish Base year dollar (numeraire year for real prices)
+year_dollar = 2022
+
+# factors to convert from various years to base year_dollar
+# (could call the function later, but these constants may be cleaner)
+multiplier2003toBaseyear_dollar <- convert_year_dollars(2003, year_dollar)
+multiplier2012toBaseyear_dollar <- convert_year_dollars(2012, year_dollar)
+multiplier2021toBaseyear_dollar <- convert_year_dollars(2021, year_dollar)
+multiplier2022toBaseyear_dollar <- convert_year_dollars(2022, year_dollar)
+```
+
+## Review Assumptions from AEO2023/IEO2021, Compared to AEO2022/IEO2021
+
+```{r combineAndNormalizeAEOdata}
+key_AEO_data <- bind_rows(key_AEO2022_data, key_AEO2023_data)
+
+# convert all prices and GDP) to base_year (2022) Dollars
+key_AEO_data <- key_AEO_data %>%
+  mutate(
+    US_Real_GDP = US_Real_GDP * multiplier2012toBaseyear_dollar,
+    Brent_Spot = ifelse(AEOyear == "AEO2022", Brent_Spot * multiplier2021toBaseyear_dollar,
+                        ifelse(AEOyear == "AEO2023", Brent_Spot * multiplier2022toBaseyear_dollar,
+                               NA) # unknown AEOyear
+    )
+  )
+
+key_AEO_data <- key_AEO_data %>% 
+  pivot_longer(cols = -c(Year, AEOyear))
+
+```
+
+```{r fig.width=7, fig.height=4}
+series_wanted <- "US_Real_GDP"
+plot_AEO_series_comparison(series_wanted)
+```
+
+```{r fig.width=7, fig.height=4}
+series_wanted <- "US_Tight_Oil_Supply"
+plot_AEO_series_comparison(series_wanted)
+```
+
+```{r fig.width=7, fig.height=4}
+series_wanted <- "Brent_Spot"
+plot_AEO_series_comparison(series_wanted)
+```
+
+
+
+```{r fig.width=7, fig.height=4}
+series_wanted <- "OPEC_Supply_Share"
+plot_AEO_series_comparison(series_wanted)
 ```
 
 ## Read in the Results from Prior OIP Cases and Produce Tables and Graphs
@@ -252,9 +350,6 @@ and convert to Base Year Dollars
 ```{r create_disr_prems_df}
 stats_wanted <- c("Mean", "5th Percentile", "95th Percentile")
 # series_wanted <- c(Variable, Year, pi_d_opt)
-
-year_dollar = 2022
-multiplier2003toBaseyear_dollar <- convert_year_dollars(2003, year_dollar)
 
 disr_prems <- all_rslts %>% 
   select(Variable, Year, pi_d_Opt, model_versionyear, model_subversion, runset_num) %>% # focus on only total disruption premium
@@ -397,8 +492,35 @@ disr_prems %>%
          ) + 
         geom_line(linewidth = 2) + 
         geom_point(size = 3) +
-        geom_ribbon(alpha = 0.3) + 
+        geom_ribbon(alpha = 0.2) + 
         ylab(paste0("$/bbl (", year_dollar, "$)")) +
   ggtitle(paste0("Oil Disruption Premium, AEO", AEOyear_wanted, ", Model version ", model_version_wanted))
+```
+
+## Save the Disruption Premiums, in Base Year `r year_dollar` Dollars, to CSV File
+
+```{r showDisruptionPremiumResultData}
+disr_prems_out <- disr_prems %>% 
+  left_join(mutate(runset_labels_short, Case = as.character(Case)), by = "Case") %>% 
+  rename(DisruptionPremium = pi_d_Opt) %>% 
+  pivot_wider(names_from = Year, values_from = DisruptionPremium) %>% 
+  select(AEOyear, Case, Label, Variable, model_versionyear, model_subversion, everything()) %>% 
+  arrange(AEOyear, Case, Variable)
+
+round_to_2digits <- function(x) {round(x, 2)}
+
+disr_prems_out %>% 
+  mutate(across(`2023`:`2050`, round_to_2digits)) %>% 
+  select(-model_versionyear, -model_subversion) %>% 
+  kable(caption = "Table R3: Disruption Premium Mean and CIs, 2022$ (4 Cases, 2 AEOs)")
+```
+
+
+```{r saveDisruptionPremiumResultData}
+disr_prems_out %>% 
+  write_csv(file = here(output_subpath, "OIP_Disruption_Premiums_20230502.csv"))
+
+disr_prems_out %>% 
+  write_xlsx(path = here(output_subpath, "OIP_Disruption_Premiums_20230502.xlsx"))
 ```
 
