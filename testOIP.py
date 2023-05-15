@@ -14,6 +14,7 @@
 #
 
 # %%
+# establish local directories
 import os
 
 # Following is not needed if launching program from model project folder,
@@ -34,10 +35,15 @@ from scipy import stats  # for scoreatpercentile
 
 # %%
 # import problem-specific utility files
-import OIP  # for test_mult_cases, test_one_case
+import OIP  # for alt_parameter_cases, disrSizes, disrProbs, eval_one_case
 import rand_dists_added as rda  # random number generation
 import sheet_utils as su  # specify ranges, read workbooks, sheets and ranges
 import utilities  # for column_from2DList
+
+# %%
+old_model_workbook_filename = "Oil_Import_Premium_2005_risk_v21main_2011Dev_v14.xls"
+# model_workbook_filename = "Oil_Import_Premium_2005_risk_v21main_2011Dev_v14r1_repaired1.xlsx"
+old_model_sheet_name = "OilImportPremium2005"
 
 # %%
 # Read latest workbook to dataframes
@@ -45,16 +51,11 @@ model_workbook_filename = "worksheet_data/localfiles/OIP2021v30r06.xlsm"
 model_sheet_name = "OilImportPremium2017"
 
 # read entire workbook to dict of dataframes, one for each sheet
+#  (The dataframes may be pretty ill-formed, if the sheet is.)
 readnew_workbook = True
 if readnew_workbook:
     wb = pd.read_excel(model_workbook_filename, sheet_name=None, header=None)
     ws = wb[model_sheet_name]  # select desired sheet
-
-
-# %%
-old_model_workbook_filename = "Oil_Import_Premium_2005_risk_v21main_2011Dev_v14.xls"
-# model_workbook_filename = "Oil_Import_Premium_2005_risk_v21main_2011Dev_v14r1_repaired1.xlsx"
-old_model_sheet_name = "OilImportPremium2005"
 
 # %%
 ## # Test functions for generation of discrete random distribution
@@ -80,6 +81,7 @@ old_model_sheet_name = "OilImportPremium2005"
 # For each random variable $X$ in the dictionary *rvDict*, generate *samplesz* samples $X_i$ according to the specified distribution type and parameters.
 
 # %%
+# def fn to generate random sample for random variables
 def gen_test_means(rvDict, samplesz=10, debug=False):
     """generate random sample for random variables in dictionary 'OIP.parameter_probabilities'
 
@@ -132,7 +134,11 @@ def gen_test_means(rvDict, samplesz=10, debug=False):
 
 
 # %%
+# def fn to open a workbook, given its name, and return the open workbook object
 def linkto_workbook(wb_name):
+    """
+    opens and returns a link to the (unread) workbook with name `wb_name`
+    """
     # os.chdir(r"\Papers\2009LCFSTradableCredits\Analysis\EnergySecurity\OIP_py")
     book = su.xlrd.open_workbook(wb_name)
     return book
@@ -210,7 +216,7 @@ def read_OIP_market_data(book):
     wbdata = su.read_openbook_namedsheet_range(
         book,
         sheetname="AEOData",
-        startrow=556,
+        startrow=556,  # ToDo: better to read named range. At least move range spec to data
         startcol=su.colname_to_num(cn="B"),
         endrow=577,
         endcol=su.colname_to_num(cn="AI"),
@@ -544,8 +550,6 @@ def save_stats_to_CSV(rslts, filename=""):
 
 # %%
 # read current RandomFix case in workbook, compare to calculated results
-# bk0 = linkto_workbook(model_workbook_filename)
-# kprf = read_OIPRandomFix(bk0)
 test_kprf = loadtest_OIPRandomFix()
 
 # %%
