@@ -1,7 +1,7 @@
 ---
 title: "OIP Postprocess Part 2"
 author: "Paul Leiby and Rocio Uria"
-date: "2023-05-02"
+date: "2023-10-02"
 output:
   word_document: default
   html_document: default
@@ -61,7 +61,7 @@ model_subversions <- c("v31", "v32") # each goes with the corresponding model_ve
 
 ```{r}
 
-table_title <- "New ORNL Oil Security Premiums Runs Using the AEO 2022"
+table_title <- "New ORNL Oil Security Premiums Runs Using the AEO 2023" # unused?
 
 table_subtitles <- c("Case", "Conditions Represented", "Disruption Premium Total (2021$)")
 
@@ -571,10 +571,10 @@ disr_prems_out %>%
 ```{r saveDisruptionPremiumResultData}
 if (save_results_to_files) {
   disr_prems_out %>% 
-    write_csv(file = here(output_subpath, "OIP_Disruption_Premiums_20230502.csv"))
+    write_csv(file = here(output_subpath, "OIP_Disruption_Premiums_20231002.csv"))
   
   disr_prems_out %>% 
-    write_xlsx(path = here(output_subpath, "OIP_Disruption_Premiums_20230502.xlsx"))
+    write_xlsx(path = here(output_subpath, "OIP_Disruption_Premiums_20231002.xlsx"))
 }
 ```
 
