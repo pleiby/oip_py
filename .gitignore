@@ -10,6 +10,9 @@
 # Mac OS files
 .DS_store
 
+# VSCode setting files
+.vscode/
+
 # All files in these local directories
 /localfiles/*
 /worksheet_data/localfiles/*
@@ -21,3 +24,4 @@
 *.html
 *.pdf
 *.docx
+*_files/
