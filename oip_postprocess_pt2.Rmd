@@ -18,6 +18,8 @@ knitr::opts_chunk$set(echo = FALSE)
 
 ### Part II. After Gathering Results, Produce Summary Tables and Graphs
 
+#### Prior Step: First Run `oip_postprocess.Rmd`
+
 Can be run (from restart or cleared environment) after various sets of OIP
 simulation cases have been compiled into one CSV file and saved,
 by previously running `oil_postprocess.Rmd`.
@@ -59,6 +61,7 @@ model_subversions <- c("v31", "v32") # each goes with the corresponding model_ve
 
 ### Execution Section
 
+#### Graph and Table Labels and Notes
 ```{r}
 
 table_title <- "New ORNL Oil Security Premiums Runs Using the AEO 2023" # unused?
@@ -408,6 +411,51 @@ disr_prems <- all_rslts %>%
   )
 
 ```
+
+Check for duplicate cases with non-matching premium values (to within numerical tolerance)
+
+```{r}
+tolerance_digits = 9 # expected numerical accuracy
+
+non_matching_disr_prems <- disr_prems %>% 
+  mutate(
+    pi_d_Opt = round(pi_d_Opt, tolerance_digits) # numerical precision expected for reproduction
+  ) %>% 
+  # filter(Variable == "Mean") %>%
+  distinct() %>% #distinct(x, y, .keep_all = TRUE)
+  # Check for rows that are only distinct in premium value
+  group_by(across(c(-pi_d_Opt))) %>%
+  filter(n()>1) %>%
+  ungroup()
+
+cat("The number of case rows with matching conditions but non-matching premium values is", nrow(non_matching_disr_prems))
+
+non_matching_disr_prems
+```
+
+```{r}
+# #display all duplicate rows in data frame
+# disr_prems %>%
+#   mutate(
+#     pi_d_Opt = round(pi_d_Opt, tolerance_digits) # numerical precision expected for reproduction
+#   ) %>% 
+#   filter(Variable == "Mean") %>%
+#   group_by_all() %>%
+#   filter(n()>1) %>%
+#   ungroup()
+```
+
+Remove duplicate cases with matching premium values (to within numerical tolerance)
+
+```{r}
+disr_prems <- disr_prems %>% 
+  mutate(
+    pi_d_Opt = round(pi_d_Opt, tolerance_digits) # numerical precision expected for reproduction
+  ) %>% 
+  # filter(Variable == "Mean") %>%
+  distinct() #distinct(x, y, .keep_all = TRUE)
+```
+
 
 ## The Cases Considered
 
