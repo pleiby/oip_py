@@ -1,0 +1,80 @@
+---
+title: "oil mkt data"
+author: "Paul Leiby"
+date: '2022-04-01'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Table 3.1 Petroleum Overview from EIA MER
+
+Source	EIA MER
+	Table_3.1_Petroleum_Overview
+	https://www.eia.gov/totalenergy/data/browser/index.php?tbl=T03.01#/?f=A&start=1949&end=2021&charted=6-12-15
+	Annual Data Converted to MMBD, Transposed
+	"Not Available" -> NA
+
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+T03 = read.csv("./Data/MER_T03_01.csv") # monthly data
+
+head(T03)
+tail(T03)
+```
+
+All Units are in Flows
+
+```{r}
+table(T03$Unit)
+```
+
+```{r}
+T03A <- T03 %>%
+  mutate(
+    YYYYMM = as.character(YYYYMM)
+  ) %>%
+  separate(col = YYYYMM, into = c("year", "mon"), 4) %>%
+  mutate(
+    Value = ifelse(Value == "Not Available", NA, Value),
+    Value = as.numeric(Value)/1000.0 # convert from 1000 BBL/day to MMBD
+  )
+  
+```
+
+```{r}
+T03A <- T03A %>%
+  filter(mon == "13") %>%
+  select(-mon)
+  
+
+```
+
+```{r}
+head(T03A)
+```
+
+```{r}
+# Annual Petroleum Liquids Data Table
+liquids_a <- T03A %>%
+  select(-MSN, -Unit, -Column_Order) %>%
+  pivot_wider(names_from = Description, values_from = Value)
+```
+
+```{r}
+head(liquids_a)
+```
+
+Save to csv, in wide columnar format
+
+```{r}
+liquids_a %>%
+  write_csv("./Data/Table_3.1_Petroleum_Overview_annual_wide_1949_2021.csv")
+```
+
