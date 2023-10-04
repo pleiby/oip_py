@@ -1,7 +1,7 @@
 ---
 title: "OIP Postprocess Part 1"
 author: "Paul Leiby and Rocio Uria"
-date: "5/1/2023"
+date: "10/1/2023"
 output: html_document
 ---
 
@@ -34,6 +34,9 @@ Locations of input and outputs are all relative to location of project directory
 inputdata_subpath <- ".." # OIP_model_output_path = here(".."), just above project dir location. Does this work
 
 output_subpath <- "Output" # destination for any output
+
+# Set logical flag for whether to save process results or not
+save_results_to_CSV <- T
 ```
 
 #### Specify set of OIP Runs to be Processed
@@ -124,13 +127,13 @@ input_path_components <- c(inputdata_subpath, toupper(model_subversion), input_s
 # input_path_components
 ```
 
-```{r findingFilesAndDirs}
+```{r findingDirs}
 list_of_dirs <- list.dirs(here(inputdata_subpath), recursive = FALSE) # list of subdirectories to "inputdata_subpath"
 list_of_dirs
 ```
 
 
-```{r findingFilesAndDirs}
+```{r findingFiles}
 # list of files in one runset directory
 list_of_available_files <- list.files(here(paste(input_path_components, collapse = "/")), recursive = FALSE)
 list_of_available_files
@@ -387,12 +390,6 @@ if (testing) {
 }
 ```
 
-Set logical flag for whether to save process results or not
-
-```{r}
-save_results_to_CSV <- T
-```
-
 Test reading a set of cases based on expected names
 
 ```{r include=F, eval=F}
@@ -426,10 +423,8 @@ process_all_result_cases <- function(curr_model_versionyears,
   for (i in 1:2) { # could actually find the subdirectories, but whatever
     model_versionyear <- curr_model_versionyears[i]
     model_subversion <- curr_model_subversions[i]
-  
     for (runset_num in 1:4) {
       listkey <- paste0(model_versionyear, model_subversion, "r0", runset_num)
-  
       set_rslts_ls[[listkey]] <- process_one_found_set_of_cases(model_versionyear, model_subversion, runset_num)
   
       if (save_results_to_CSV) {
