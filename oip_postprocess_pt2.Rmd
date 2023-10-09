@@ -3,8 +3,12 @@ title: "Oil Security Premium Model Results Summary"
 author: "Paul Leiby and Rocio Uria"
 date: "2023-10-09"
 output:
-  word_document: default
-  html_document: default
+  word_document:
+    toc: true
+    toc_depth: 3
+  html_document:
+    toc: true
+    toc_depth: 3
 ---
 
 
@@ -12,18 +16,15 @@ output:
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
-# **DRAFT**
 
-----------------------------------------------------------------------
-
-### Part II. After Gathering Results, Produce Summary Tables and Graphs
+## Gather Results, Produce Summary Tables and Graphs
 
 Notes: 
 
-- This report produced from file `oip_postprocess_pt2.Rmd`
+- This report is produced from file `oip_postprocess_pt2.Rmd`
 - Prior Steps: 
   - First execute a series of runs of the OIP model, each generating an xlxs format output file.
-  - Then Run `oip_postprocess.Rmd`
+  - Then run `oip_postprocess.Rmd`
 `   - Compileas various sets of OIP simulation cases have been compiled into one CSV file and saves.
 
 ```{r message=F}
@@ -39,7 +40,7 @@ library(flextable) # for more flexibly formatted tables
 
 ## Data Section
 
-#### Expected location of input data (result files from past runs of OIP)
+### Expected location of input data (result files from past runs of OIP)
 
 Locations of input and outputs are all relative to location of project directory.
 
@@ -60,8 +61,6 @@ save_results_to_files <-  TRUE # T if want to create CSV & XLSX of rounded resul
 model_versionyears <- c("OIP2022", "OIP2023")
 model_subversions <- c("v31", "v32") # each goes with the corresponding model_versionyear
 ```
-
-### Execution Section
 
 ```{r}
 # Graph and Table Labels and Notes
@@ -110,7 +109,11 @@ result_columnheadings <- c(
 results_wanted <- c("Mean", "90% Confidence Interval") # For Disruption Premium Total
 ```
 
-Obtain historical and projected GDP Deflator from AEO
+<!--
+## Execution Section
+-->
+
+### Obtain historical and projected data from AEO
 
 ```{r defFn_read_AEO_data, warning=FALSE, message=FALSE}
 read_AEO_data <- function(data_path, data_filename, AEO_year_num) {
@@ -258,7 +261,7 @@ my_compact_regulartable <- function(df, caption = "Table") {
 ```
 
 
-Supplement Historical GDP Deflator with Early Year Values from FRED
+#### Supplement Historical GDP Deflator with Early Year Values from FRED
 
 ```{r}
 GDP_deflator_2012_FRED <-  # (implicit price deflator), Index 2012=1.0, FRED, Annual, Not Seasonally Adjusted
@@ -329,7 +332,9 @@ multiplier2021toBaseyear_dollar <- convert_year_dollars(2021, year_dollar)
 multiplier2022toBaseyear_dollar <- convert_year_dollars(2022, year_dollar)
 ```
 
-## Review Assumptions from AEO2023/IEO2021, Compared to AEO2022/IEO2021
+\newpage
+
+### Review Assumptions from AEO2023/IEO2021, Compared to AEO2022/IEO2021
 
 ```{r combineAndNormalizeAEOdata}
 key_AEO_data <- bind_rows(key_AEO2022_data, key_AEO2023_data)
@@ -373,7 +378,11 @@ series_wanted <- "OPEC_Supply_Share"
 plot_AEO_series_comparison(series_wanted, yunits = "Percent of World")
 ```
 
-## Read in the Results from Prior OIP Cases and Produce Tables and Graphs
+\newpage
+
+## OIP Results
+
+#### Read in the Results from OIP Cases and Produce Tables and Graphs
 
 Note that the financial values (\$/bbl premia) in these saved
 OIP case result files are all in 2003\$.
@@ -451,6 +460,11 @@ non_matching_disr_prems <- disr_prems %>%
   ungroup()
 
 cat("The number of case rows with matching conditions but non-matching premium values is", nrow(non_matching_disr_prems))
+```
+
+Table of Duplicated Cases With Non-matching Results (Zero rows if none).
+
+```{r}
 
 non_matching_disr_prems
 ```
@@ -479,7 +493,7 @@ disr_prems <- disr_prems %>%
 ```
 
 
-## The Cases Considered
+### The Cases Considered
 
 ```{r}
 runset_labels %>% 
@@ -491,7 +505,7 @@ runset_assumptions %>%
   my_regulartable(caption = "Table D3: Assumptions for Cases")
 ```
 
-## Plot the Results For AEO2023/IEO 2021 Cases
+### Plot the Results For AEO2023/IEO 2021 Cases
 
 ```{r plotOneModelVersion, fig.width=7, fig.height=4}
 model_version_wanted <- "v32"
@@ -514,7 +528,7 @@ disr_prems %>%
 
 \newpage
 
-## Disruption Premium Results, For Both Year AEOs (`r year_dollar` $)
+### Disruption Premium Results, For Both Year AEOs (`r year_dollar` $)
 
 ```{r}
 disr_prems %>%
@@ -574,7 +588,7 @@ disr_prems %>%
 
 \newpage
 
-## Plot 2 Sets of Cases Across AEO Years for Comparison
+### Plot 2 Sets of Cases Across AEO Years for Comparison
 
 ```{r plot2SetsOfPrems, fig.width=7, fig.height=4}
 disr_prems %>% 
@@ -593,7 +607,7 @@ disr_prems %>%
         ggtitle(paste0("Oil Disruption Premium, AEO", AEOyear_wanted, ", Model version ", model_version_wanted))
 ```
 
-## Look at Results for AEO2023, with Confidence Bands
+### Results for AEO2023, with Confidence Bands
 
 The 90% Confidence Interval (CI) bounds are fairly wide.
 
@@ -623,7 +637,11 @@ disr_prems %>%
   ggtitle(paste0("Oil Disruption Premium, AEO", AEOyear_wanted, ", Model version ", model_version_wanted))
 ```
 
-## Save the Disruption Premiums, in Base Year `r year_dollar` Dollars, to CSV File
+\newpage
+
+## Appendix: Listing of Disruption Premiums, Mean and Range
+
+All Disruption Premiums are saved, in Base Year `r year_dollar` Dollars, to CSV File
 
 ```{r organizedDisruptionPremiumResultData}
 disr_prems_out <- disr_prems %>% 
@@ -651,8 +669,6 @@ temp <- disr_prems_out %>%
   select(AEOyear, Case, Year, `5th %ile`, Mean, `95th %ile`)
 ```
 
-\newpage
-
 ```{r showDisruptionPremiumResultData2022}
 temp %>% 
   filter(AEOyear == 2022) %>%
@@ -664,7 +680,6 @@ temp %>%
 \newpage
 
 ```{r showDisruptionPremiumResultData2023}
-print("\n\n") # separator
 temp %>% 
   filter(AEOyear == 2023) %>%
   my_regulartable(caption = "Table R3: Disruption Premium Mean and CIs, 2022$ (4 Cases, AEO2023)") # %>% 
