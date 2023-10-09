@@ -60,6 +60,8 @@ save_results_to_files <-  TRUE # T if want to create CSV & XLSX of rounded resul
 ```{r echo = T}
 model_versionyears <- c("OIP2022", "OIP2023")
 model_subversions <- c("v31", "v32") # each goes with the corresponding model_versionyear
+
+output_date_string <- "20231009" # date to be assigned to output CSV and xlsx files
 ```
 
 ```{r}
@@ -641,7 +643,8 @@ disr_prems %>%
 
 ## Appendix: Listing of Disruption Premiums, Mean and Range
 
-All Disruption Premiums are saved, in Base Year `r year_dollar` Dollars, to CSV File
+All Disruption Premiums are saved, in Base Year `r year_dollar` Dollars, to CSV File and
+xlsx files named `r paste0("OIP_Disruption_Premiums_",output_date_string)` 
 
 ```{r organizedDisruptionPremiumResultData}
 disr_prems_out <- disr_prems %>% 
@@ -672,7 +675,7 @@ temp <- disr_prems_out %>%
 ```{r showDisruptionPremiumResultData2022}
 temp %>% 
   filter(AEOyear == 2022) %>%
-  my_regulartable(caption = "Table R3: Disruption Premium Mean and CIs, 2022$ (4 Cases, AEO2022)") # %>% 
+  my_regulartable(caption = "Table R3a: Disruption Premium Mean and CIs, 2022$ (4 Cases, AEO2022)") # %>% 
   # kable_styling(font_size = 7) %>% 
   # kable_classic_2(full_width = F)
 ```
@@ -682,7 +685,7 @@ temp %>%
 ```{r showDisruptionPremiumResultData2023}
 temp %>% 
   filter(AEOyear == 2023) %>%
-  my_regulartable(caption = "Table R3: Disruption Premium Mean and CIs, 2022$ (4 Cases, AEO2023)") # %>% 
+  my_regulartable(caption = "Table R3b: Disruption Premium Mean and CIs, 2022$ (4 Cases, AEO2023)") # %>% 
 
 ```
 
@@ -690,10 +693,12 @@ temp %>%
 ```{r saveDisruptionPremiumResultData}
 if (save_results_to_files) {
   disr_prems_out %>% 
-    write_csv(file = here(output_subpath, "OIP_Disruption_Premiums_20231002.csv"))
+    write_csv(file = here(output_subpath,
+                          paste0("OIP_Disruption_Premiums_",output_date_string,".csv")))
   
   disr_prems_out %>% 
-    write_xlsx(path = here(output_subpath, "OIP_Disruption_Premiums_20231002.xlsx"))
+    write_xlsx(path = here(output_subpath, 
+                          paste0("OIP_Disruption_Premiums_",output_date_string,".xlsx")))
 }
 ```
 
